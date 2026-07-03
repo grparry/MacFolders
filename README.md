@@ -7,7 +7,7 @@ comes back exactly as you left it.
 
 ## Why
 
-Finder (and Path Finder) can't save and restore groups of tabs. If you work
+Finder can't save and restore groups of tabs. If you work
 across several projects, you rebuild your window/tab layout every day.
 MacFolders makes the window itself the unit of persistence.
 
