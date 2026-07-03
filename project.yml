@@ -1,0 +1,48 @@
+name: MacFolders
+options:
+  bundleIdPrefix: ai.grovestack
+  deploymentTarget:
+    macOS: "15.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    # Ad-hoc by default so anyone can build. For a stable identity (so macOS
+    # remembers folder-access grants across rebuilds), export
+    # MACFOLDERS_SIGN_IDENTITY and the scripts pass it to xcodebuild.
+    CODE_SIGN_IDENTITY: "-"
+targets:
+  MacFolders:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/MacFolders
+    info:
+      path: Sources/MacFolders/Info.plist
+      properties:
+        CFBundleName: MacFolders
+        CFBundleDisplayName: MacFolders
+        NSPrincipalClass: NSApplication
+        NSHighResolutionCapable: true
+        LSMinimumSystemVersion: "15.0"
+        CFBundleIconFile: AppIcon
+  MacFoldersTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/MacFoldersTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: MacFolders
+schemes:
+  MacFolders:
+    build:
+      targets:
+        MacFolders: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MacFoldersTests
