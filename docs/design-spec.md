@@ -7,7 +7,7 @@
 
 MacFolders is a native macOS file manager that looks and behaves like Finder, with one differentiator: **switchable workspaces** — the whole app state (windows, each with tabs) is a named, persistent workspace you can swap in and out. Personal tool: unsandboxed, built locally, installed to `/Applications/MacFolders.app`.
 
-Motivation: Finder and Path Finder cannot save/restore groups of tabs. No other bells and whistles wanted — the closer to stock Finder, the better.
+Motivation: Finder cannot save/restore groups of tabs. No other bells and whistles wanted — the closer to stock Finder, the better.
 
 ## Requirements
 
