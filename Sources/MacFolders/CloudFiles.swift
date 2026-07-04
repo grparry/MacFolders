@@ -30,6 +30,10 @@ enum CloudFiles {
         return (plist["NSURLFileSizeKey"] as? NSNumber)?.int64Value
     }
 
+    static func isInICloudContainer(_ url: URL) -> Bool {
+        url.path.contains("/Library/Mobile Documents/")
+    }
+
     static func startDownload(itemAt url: URL) throws {
         try FileManager.default.startDownloadingUbiquitousItem(at: url)
     }

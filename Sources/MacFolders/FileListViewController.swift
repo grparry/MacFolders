@@ -18,7 +18,8 @@ final class ContextOutlineListView: NSOutlineView {
 }
 
 final class FileListViewController: NSViewController, DirectoryView,
-    NSOutlineViewDataSource, NSOutlineViewDelegate, NSTextFieldDelegate {
+    NSOutlineViewDataSource, NSOutlineViewDelegate, NSTextFieldDelegate,
+    NSMenuDelegate {
 
     var model: DirectoryModel
     var onOpen: ((URL) -> Void)?
@@ -52,7 +53,63 @@ final class FileListViewController: NSViewController, DirectoryView,
         }
     }
 
+    // MARK: Column visibility (right-click the header to choose, like Finder)
+
+    static let columnDefinitions: [(String, String, CGFloat)] = [
+        ("name", "Name", 320),
+        ("dateModified", "Date Modified", 160),
+        ("size", "Size", 80),
+        ("kind", "Kind", 140),
+        ("cloudStatus", "iCloud Status", 110),
+    ]
+
+    /// User choices from the header menu; a column absent here uses its
+    /// default (visible — except iCloud Status, which auto-shows only in
+    /// iCloud locations, like Finder).
+    private static func columnOverrides() -> [String: Bool] {
+        UserDefaults.standard.dictionary(forKey: "listVisibleColumns")
+            as? [String: Bool] ?? [:]
+    }
+
+    private func syncColumnVisibility() {
+        let overrides = Self.columnOverrides()
+        for column in outlineView.tableColumns {
+            let id = column.identifier.rawValue
+            if id == "name" { continue }  // Name is not optional
+            if let manual = overrides[id] {
+                column.isHidden = !manual
+            } else if id == "cloudStatus" {
+                column.isHidden = !CloudFiles.isInICloudContainer(model.directoryURL)
+            } else {
+                column.isHidden = false
+            }
+        }
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        for (id, title, _) in Self.columnDefinitions where id != "name" {
+            let item = NSMenuItem(title: title,
+                                  action: #selector(toggleColumn(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = id
+            item.state = outlineView.tableColumn(withIdentifier: .init(id))?.isHidden == false
+                ? .on : .off
+            menu.addItem(item)
+        }
+    }
+
+    @objc private func toggleColumn(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String,
+              let column = outlineView.tableColumn(withIdentifier: .init(id)) else { return }
+        column.isHidden.toggle()
+        var overrides = Self.columnOverrides()
+        overrides[id] = !column.isHidden
+        UserDefaults.standard.set(overrides, forKey: "listVisibleColumns")
+    }
+
     func modelDidChange() {
+        syncColumnVisibility()
         let expanded = expandedURLs()
         let selected = Set(selectedURLs)
         rootNodes = model.items.map(ListNode.init(item:))
@@ -102,20 +159,19 @@ final class FileListViewController: NSViewController, DirectoryView,
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let columns: [(String, String, CGFloat)] = [
-            ("name", "Name", 320),
-            ("dateModified", "Date Modified", 160),
-            ("size", "Size", 80),
-            ("kind", "Kind", 140),
-        ]
-        for (id, title, width) in columns {
+        for (id, title, width) in Self.columnDefinitions {
             let column = NSTableColumn(identifier: .init(id))
             column.title = title
             column.width = width
-            column.sortDescriptorPrototype = NSSortDescriptor(key: id, ascending: true)
+            if id != "cloudStatus" {
+                column.sortDescriptorPrototype = NSSortDescriptor(key: id, ascending: true)
+            }
             outlineView.addTableColumn(column)
             if id == "name" { outlineView.outlineTableColumn = column }
         }
+        let headerMenu = NSMenu()
+        headerMenu.delegate = self
+        outlineView.headerView?.menu = headerMenu
         outlineView.dataSource = self
         outlineView.delegate = self
         outlineView.allowsMultipleSelection = true
@@ -239,6 +295,12 @@ final class FileListViewController: NSViewController, DirectoryView,
         case "size":
             cell.textField?.stringValue = file.isDirectory
                 ? "--" : Self.byteFormatter.string(fromByteCount: file.size)
+        case "cloudStatus":
+            switch file.cloudStatus {
+            case .notCloud: cell.textField?.stringValue = ""
+            case .inCloudOnly: cell.textField?.stringValue = "In iCloud"
+            case .downloaded: cell.textField?.stringValue = "Downloaded"
+            }
         case "kind":
             cell.textField?.stringValue = file.kind
         default:
