@@ -193,32 +193,26 @@ final class SidebarViewController: NSViewController,
         }
     }
 
-    /// Mount a discovered server via the system connect dialog (auth +
-    /// share selection, same as Finder); navigate to the mounted share.
+    /// Connect to a discovered server through the system's standard flow
+    /// (Finder's connect dialog: keychain auth + share selection). Once the
+    /// share mounts, the mount notification lists it here with its eject
+    /// button.
     private func connectToServer(_ name: String) {
-        NetworkBrowser.shared.resolveHost(of: name) { [weak self] host in
-            guard let self else { return }
-            guard let host,
-                  let url = URL(string: "smb://\(host)") else {
+        NetworkBrowser.shared.resolveHost(of: name) { host in
+            guard let host, let url = URL(string: "smb://\(host)") else {
                 let alert = NSAlert()
                 alert.messageText = "Could not resolve “\(name)”."
+                alert.informativeText = "The server may have gone offline."
                 alert.runModal()
                 return
             }
-            let openOptions = NSMutableDictionary()
-            openOptions[kNAUIOptionKey] = kNAUIOptionAllowUI
             var requestID: AsyncRequestID?
-            NetFSMountURLAsync(url as CFURL, nil, nil, nil, openOptions, nil,
-                               &requestID, DispatchQueue.main) { status, _, mountpoints in
-                if status == 0 {
-                    if let first = (mountpoints as? [String])?.first {
-                        self.onSelect?(URL(fileURLWithPath: first))
-                    }
-                } else if status != ECANCELED {
-                    NSAlert(error: NSError(
-                        domain: NSPOSIXErrorDomain, code: Int(status),
-                        userInfo: [NSLocalizedDescriptionKey:
-                            "Could not connect to “\(name)”."])).runModal()
+            // Auth/share-picker UI and connection errors are presented by
+            // the system (NetAuthAgent); on success we land in the share.
+            NetFSMountURLAsync(url as CFURL, nil, nil, nil, nil, nil,
+                               &requestID, DispatchQueue.main) { [weak self] _, _, mountpoints in
+                if let first = (mountpoints as? [String])?.first {
+                    self?.onSelect?(URL(fileURLWithPath: first))
                 }
             }
         }
