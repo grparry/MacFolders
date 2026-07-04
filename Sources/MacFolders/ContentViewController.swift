@@ -98,13 +98,6 @@ final class ContentViewController: NSViewController {
 
     // MARK: Context menu + file actions
 
-    @objc func validateMenuItem(_ item: NSMenuItem) -> Bool {
-        if item.action == #selector(toggleHiddenFiles(_:)) {
-            item.state = Self.showHiddenFiles ? .on : .off
-        }
-        return true
-    }
-
     func makeContextMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
@@ -274,13 +267,6 @@ final class ContentViewController: NSViewController {
     static let hiddenFilesChanged = Notification.Name("HiddenFilesChanged")
     static var showHiddenFiles: Bool {
         UserDefaults.standard.bool(forKey: "showHiddenFiles")
-    }
-
-    /// Global and persistent, like Finder's Cmd+Shift+. — every open view
-    /// follows, and new windows inherit.
-    @objc func toggleHiddenFiles(_ sender: Any?) {
-        UserDefaults.standard.set(!Self.showHiddenFiles, forKey: "showHiddenFiles")
-        NotificationCenter.default.post(name: Self.hiddenFilesChanged, object: nil)
     }
 
     @objc private func hiddenFilesSettingChanged(_ note: Notification) {

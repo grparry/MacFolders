@@ -18,9 +18,13 @@ final class NetworkBrowser {
                                 using: NWParameters())
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             guard let self else { return }
+            // This machine advertises its own SMB service; a self entry
+            // is unmountable noise (Grant's "(2)"-suffixed self-discovery).
+            let selfName = Host.current().localizedName
             var found: [String: NWEndpoint] = [:]
             for result in results {
-                if case .service(let name, _, _, _) = result.endpoint {
+                if case .service(let name, _, _, _) = result.endpoint,
+                   name != selfName {
                     found[name] = result.endpoint
                 }
             }
