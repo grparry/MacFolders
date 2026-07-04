@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.session.openWorkspaceIDs()
                 ?? [self?.workspaceManager.state.activeWorkspaceID].compactMap { $0 }
         }
+        NetworkBrowser.shared.start()
         workspacesMenuController = WorkspacesMenuController(manager: workspaceManager)
         NSApp.mainMenu = MainMenu.build(workspacesMenu: workspacesMenuController.menu)
         workspaceManager.onStateChanged = { [weak self] in self?.refreshSidebars() }

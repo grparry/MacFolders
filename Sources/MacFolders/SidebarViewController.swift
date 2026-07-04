@@ -1,4 +1,5 @@
 import AppKit
+import NetFS
 
 extension NSPasteboard.PasteboardType {
     /// Private type for reordering favorites — deliberately NOT a fileURL so a
@@ -12,6 +13,7 @@ final class SidebarViewController: NSViewController,
     enum Entry {
         case group(String)
         case location(URL)
+        case server(String)   // discovered SMB server; click to connect
     }
 
     var onSelect: ((URL) -> Void)?
@@ -111,6 +113,9 @@ final class SidebarViewController: NSViewController,
                            name: NSWorkspace.didMountNotification, object: nil)
         center.addObserver(self, selector: #selector(volumesChanged),
                            name: NSWorkspace.didUnmountNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(volumesChanged),
+            name: NetworkBrowser.serversChanged, object: nil)
         reloadVolumes()
     }
 
@@ -127,6 +132,14 @@ final class SidebarViewController: NSViewController,
 
     private func rebuildEntries() {
         entries = [.group("Locations")] + volumes.map(Entry.location)
+        // Discovered servers whose share is already mounted stay one row:
+        // the mounted volume (with its eject button).
+        let mountedNames = Set(volumes.compactMap {
+            (try? $0.resourceValues(forKeys: [.volumeNameKey]))?.volumeName
+        })
+        entries += NetworkBrowser.shared.servers
+            .filter { !mountedNames.contains($0) }
+            .map(Entry.server)
         if let icloud = CloudFiles.iCloudDriveURL() {
             entries += [.group("iCloud"), .location(icloud)]
         }
@@ -142,9 +155,46 @@ final class SidebarViewController: NSViewController,
 
     @objc private func rowClicked() {
         let row = outlineView.clickedRow
-        guard entries.indices.contains(row),
-              case .location(let url) = entries[row] else { return }
-        onSelect?(url)
+        guard entries.indices.contains(row) else { return }
+        switch entries[row] {
+        case .location(let url):
+            onSelect?(url)
+        case .server(let name):
+            connectToServer(name)
+        case .group:
+            break
+        }
+    }
+
+    /// Mount a discovered server via the system connect dialog (auth +
+    /// share selection, same as Finder); navigate to the mounted share.
+    private func connectToServer(_ name: String) {
+        NetworkBrowser.shared.resolveHost(of: name) { [weak self] host in
+            guard let self else { return }
+            guard let host,
+                  let url = URL(string: "smb://\(host)") else {
+                let alert = NSAlert()
+                alert.messageText = "Could not resolve “\(name)”."
+                alert.runModal()
+                return
+            }
+            let openOptions = NSMutableDictionary()
+            openOptions[kNAUIOptionKey] = kNAUIOptionAllowUI
+            var requestID: AsyncRequestID?
+            NetFSMountURLAsync(url as CFURL, nil, nil, nil, openOptions, nil,
+                               &requestID, DispatchQueue.main) { status, _, mountpoints in
+                if status == 0 {
+                    if let first = (mountpoints as? [String])?.first {
+                        self.onSelect?(URL(fileURLWithPath: first))
+                    }
+                } else if status != ECANCELED {
+                    NSAlert(error: NSError(
+                        domain: NSPOSIXErrorDomain, code: Int(status),
+                        userInfo: [NSLocalizedDescriptionKey:
+                            "Could not connect to “\(name)”."])).runModal()
+                }
+            }
+        }
     }
 
     // MARK: Outline (flat list; groups are styling only)
@@ -303,6 +353,30 @@ final class SidebarViewController: NSViewController,
                      item: Any) -> NSView? {
         guard let index = item as? Int, entries.indices.contains(index) else { return nil }
         switch entries[index] {
+        case .server(let name):
+            let cell = NSTableCellView()
+            let text = NSTextField(labelWithString: name)
+            text.lineBreakMode = .byTruncatingMiddle
+            let image = NSImageView()
+            let icon = NSImage(named: NSImage.networkName) ?? NSImage()
+            icon.size = NSSize(width: 16, height: 16)
+            image.image = icon
+            text.translatesAutoresizingMaskIntoConstraints = false
+            image.translatesAutoresizingMaskIntoConstraints = false
+            cell.addSubview(image)
+            cell.addSubview(text)
+            cell.textField = text
+            cell.imageView = image
+            NSLayoutConstraint.activate([
+                image.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
+                image.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                image.widthAnchor.constraint(equalToConstant: 16),
+                image.heightAnchor.constraint(equalToConstant: 16),
+                text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 6),
+                text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
+                text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+            ])
+            return cell
         case .group(let title):
             let cell = NSTableCellView()
             let text = NSTextField(labelWithString: title)
