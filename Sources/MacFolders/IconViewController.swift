@@ -172,7 +172,7 @@ final class IconViewController: NSViewController, DirectoryView,
                                            for: indexPath)
         let file = model.items[indexPath.item]
         item.textField?.stringValue = file.name
-        item.textField?.textColor = file.isCloudPlaceholder
+        item.textField?.textColor = file.cloudStatus == .inCloudOnly
             ? .secondaryLabelColor : .labelColor
         let icon = file.icon
         icon.size = NSSize(width: 64, height: 64)

@@ -42,17 +42,30 @@ enum CloudFiles {
         try FileManager.default.evictUbiquitousItem(at: url)
     }
 
-    /// Downloaded item stored in iCloud (eviction candidate).
+    /// iCloud item not resident on disk (legacy placeholder or modern
+    /// File Provider dataless file).
+    static func needsDownload(_ url: URL) -> Bool {
+        if isPlaceholder(url) { return true }
+        let values = try? url.resourceValues(
+            forKeys: [.ubiquitousItemDownloadingStatusKey])
+        return values?.ubiquitousItemDownloadingStatus == .notDownloaded
+    }
+
+    /// Resident iCloud item (eviction candidate).
     static func isEvictable(_ url: URL) -> Bool {
-        !isPlaceholder(url) && FileManager.default.isUbiquitousItem(at: url)
+        guard !isPlaceholder(url),
+              FileManager.default.isUbiquitousItem(at: url) else { return false }
+        let values = try? url.resourceValues(
+            forKeys: [.ubiquitousItemDownloadingStatusKey])
+        return values?.ubiquitousItemDownloadingStatus != .notDownloaded
     }
 }
 
 extension FileItem {
-    /// Placeholders have no real file to derive an icon from; use the type
-    /// the materialized name implies.
+    /// Legacy placeholders have no real file to derive an icon from; use the
+    /// type the materialized name implies. Dataless items have real paths.
     var icon: NSImage {
-        guard isCloudPlaceholder else {
+        guard isLegacyCloudPlaceholder else {
             return NSWorkspace.shared.icon(forFile: url.path)
         }
         let ext = (name as NSString).pathExtension

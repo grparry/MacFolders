@@ -333,7 +333,7 @@ final class ColumnViewController: NSViewController, DirectoryView,
         let cell = tableView.makeView(withIdentifier: cellID, owner: self) as? NSTableCellView
             ?? Self.makeCell(id: cellID)
         cell.textField?.stringValue = item.name
-        cell.textField?.textColor = item.isCloudPlaceholder
+        cell.textField?.textColor = item.cloudStatus == .inCloudOnly
             ? .secondaryLabelColor : .labelColor
         let icon = item.icon
         icon.size = NSSize(width: 16, height: 16)
