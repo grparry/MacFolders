@@ -39,6 +39,29 @@ final class SidebarViewController: NSViewController,
     static let trashURL = FileManager.default.urls(
         for: .trashDirectory, in: .userDomainMask)[0]
 
+    /// Finder's Trash is several trashes merged: the home trash, iCloud
+    /// Drive's ".Trash" (Recently Deleted), and each volume's ".Trashes/uid".
+    static func trashDirectories() -> [URL] {
+        var dirs = [trashURL]
+        if let icloud = CloudFiles.iCloudDriveURL() {
+            let cloudTrash = icloud.appendingPathComponent(".Trash")
+            if FileManager.default.fileExists(atPath: cloudTrash.path) {
+                dirs.append(cloudTrash)
+            }
+        }
+        let uid = getuid()
+        let volumes = FileManager.default.mountedVolumeURLs(
+            includingResourceValuesForKeys: nil,
+            options: [.skipHiddenVolumes]) ?? []
+        for volume in volumes where volume.path != "/" {
+            let volumeTrash = volume.appendingPathComponent(".Trashes/\(uid)")
+            if FileManager.default.fileExists(atPath: volumeTrash.path) {
+                dirs.append(volumeTrash)
+            }
+        }
+        return dirs
+    }
+
     /// The workspace of the window this sidebar lives in.
     private var windowWorkspaceID: UUID {
         AppDelegate.shared.workspaceID(for: view.window)
@@ -406,9 +429,10 @@ final class SidebarViewController: NSViewController,
             let text = NSTextField(labelWithString: name.isEmpty ? url.path : name)
             text.lineBreakMode = .byTruncatingMiddle
             let image = NSImageView()
-            let trashHasItems = isTrash
-                && !((try? FileManager.default.contentsOfDirectory(
-                    at: url, includingPropertiesForKeys: nil)) ?? []).isEmpty
+            let trashHasItems = isTrash && Self.trashDirectories().contains {
+                !((try? FileManager.default.contentsOfDirectory(
+                    at: $0, includingPropertiesForKeys: nil)) ?? []).isEmpty
+            }
             let icon = isICloudDrive
                 ? (NSImage(systemSymbolName: "icloud",
                            accessibilityDescription: "iCloud Drive")
@@ -477,6 +501,13 @@ extension SidebarViewController: NSMenuDelegate {
         infoItem.target = self
         infoItem.representedObject = url
         menu.addItem(infoItem)
+        if url == Self.trashURL {
+            let emptyItem = NSMenuItem(title: "Empty Trash…",
+                                       action: #selector(emptyTrash(_:)),
+                                       keyEquivalent: "")
+            emptyItem.target = self
+            menu.addItem(emptyItem)
+        }
         if Self.isEjectable(url) {
             let name = (try? url.resourceValues(forKeys: [.volumeNameKey]))?
                 .volumeName ?? url.lastPathComponent
@@ -540,6 +571,41 @@ extension SidebarViewController: NSMenuDelegate {
     @objc private func showItemInfo(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
         GetInfoPanelController.show(for: url)
+    }
+
+    @objc private func emptyTrash(_ sender: NSMenuItem) {
+        // Read errors surface — a permission failure must never masquerade
+        // as an empty trash.
+        var items: [URL] = []
+        for dir in Self.trashDirectories() {
+            do {
+                items += try FileManager.default.contentsOfDirectory(
+                    at: dir, includingPropertiesForKeys: nil)
+            } catch {
+                NSAlert(error: error).runModal()
+                return
+            }
+        }
+        guard !items.isEmpty else {
+            let alert = NSAlert()
+            alert.messageText = "The Trash is already empty."
+            alert.runModal()
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Empty the Trash?"
+        alert.informativeText = items.count == 1
+            ? "1 item will be permanently erased. This cannot be undone."
+            : "\(items.count) items will be permanently erased. This cannot be undone."
+        alert.addButton(withTitle: "Empty Trash")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do {
+            for item in items {
+                try FileManager.default.removeItem(at: item)
+            }
+        } catch { NSAlert(error: error).runModal() }
+        rebuildEntries()  // trash icon back to empty
     }
 
     @objc private func removeRecent(_ sender: NSMenuItem) {
