@@ -286,10 +286,10 @@ final class FileListViewController: NSViewController, DirectoryView,
                      item: Any) -> NSView? {
         guard let column = tableColumn, let node = item as? ListNode else { return nil }
         let file = node.item
-        let isName = column.identifier.rawValue == "name"
+        let hasIcon = ["name", "cloudStatus"].contains(column.identifier.rawValue)
         let cellID = NSUserInterfaceItemIdentifier("cell-\(column.identifier.rawValue)")
         let cell = outlineView.makeView(withIdentifier: cellID, owner: self) as? NSTableCellView
-            ?? Self.makeCell(id: cellID, withIcon: isName)
+            ?? Self.makeCell(id: cellID, withIcon: hasIcon)
         switch column.identifier.rawValue {
         case "name":
             cell.textField?.stringValue = file.name
@@ -320,10 +320,21 @@ final class FileListViewController: NSViewController, DirectoryView,
             cell.textField?.stringValue = FileMetadata.finderComment(for: file.url)
         case "cloudStatus":
             switch file.cloudStatus {
-            case .notCloud: cell.textField?.stringValue = ""
-            case .inCloudOnly: cell.textField?.stringValue = "In iCloud"
-            case .downloaded: cell.textField?.stringValue = "Downloaded"
+            case .notCloud:
+                cell.textField?.stringValue = ""
+                cell.imageView?.image = nil
+            case .inCloudOnly:
+                cell.textField?.stringValue = "In iCloud"
+                cell.imageView?.image = NSImage(
+                    systemSymbolName: "icloud.and.arrow.down",
+                    accessibilityDescription: "In iCloud")
+            case .downloaded:
+                cell.textField?.stringValue = "Downloaded"
+                cell.imageView?.image = NSImage(
+                    systemSymbolName: "checkmark.icloud",
+                    accessibilityDescription: "Downloaded")
             }
+            cell.imageView?.contentTintColor = .secondaryLabelColor
         case "kind":
             cell.textField?.stringValue = file.kind
         default:

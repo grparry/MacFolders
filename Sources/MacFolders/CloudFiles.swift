@@ -34,6 +34,41 @@ enum CloudFiles {
         url.path.contains("/Library/Mobile Documents/")
     }
 
+    /// The on-disk flag Finder's "Keep Downloaded" writes. There is no
+    /// public API for iCloud pinning; this is the one non-public mechanism
+    /// in the codebase. The "#P" suffix marks the xattr for File Provider
+    /// propagation.
+    private static let pinnedXattr = "com.apple.fileprovider.pinned#P"
+
+    static func isPinned(_ url: URL) -> Bool {
+        getxattr(url.path, pinnedXattr, nil, 0, 0, 0) > 0
+    }
+
+    static func setPinned(_ pinned: Bool, itemAt url: URL) throws {
+        if pinned {
+            let value: [UInt8] = Array("1".utf8)
+            guard setxattr(url.path, pinnedXattr, value, value.count, 0, 0) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno),
+                              userInfo: [NSLocalizedDescriptionKey:
+                                "Could not pin \(url.lastPathComponent): "
+                                + String(cString: strerror(errno))])
+            }
+            // Keeping downloaded implies being downloaded.
+            if needsDownload(url) { try startDownload(itemAt: url) }
+        } else {
+            guard removexattr(url.path, pinnedXattr, 0) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno),
+                              userInfo: [NSLocalizedDescriptionKey:
+                                "Could not unpin \(url.lastPathComponent): "
+                                + String(cString: strerror(errno))])
+            }
+        }
+    }
+
+    static func isInICloud(_ url: URL) -> Bool {
+        isPlaceholder(url) || FileManager.default.isUbiquitousItem(at: url)
+    }
+
     static func startDownload(itemAt url: URL) throws {
         try FileManager.default.startDownloadingUbiquitousItem(at: url)
     }

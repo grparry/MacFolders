@@ -114,6 +114,18 @@ final class ContentViewController: NSViewController {
         for url in actionTargets { onOpen?(url) }
     }
 
+    /// Toggle Finder-style pinning; pinning all when mixed, unpinning when
+    /// every selected item is already pinned.
+    @objc func toggleKeepDownloaded(_ sender: Any?) {
+        let targets = actionTargets.filter(CloudFiles.isInICloud)
+        let pinning = !targets.allSatisfy(CloudFiles.isPinned)
+        do {
+            for url in targets {
+                try CloudFiles.setPinned(pinning, itemAt: url)
+            }
+        } catch { NSAlert(error: error).runModal() }
+    }
+
     @objc func downloadFromCloud(_ sender: Any?) {
         do {
             for url in actionTargets where CloudFiles.needsDownload(url) {
@@ -299,12 +311,19 @@ extension ContentViewController: NSMenuDelegate {
             openWith.isEnabled = selection.count == 1
             menu.addItem(openWith)
             menu.addItem(.separator())
+            if selection.contains(where: CloudFiles.isInICloud) {
+                let keep = NSMenuItem(title: "Keep Downloaded",
+                                      action: #selector(toggleKeepDownloaded(_:)),
+                                      keyEquivalent: "")
+                keep.target = self
+                keep.state = selection.allSatisfy(CloudFiles.isPinned) ? .on : .off
+                menu.addItem(keep)
+            }
             if selection.contains(where: CloudFiles.needsDownload) {
                 menu.addItem(withTitle: "Download Now",
                              action: #selector(downloadFromCloud(_:)),
                              keyEquivalent: "").target = self
-            }
-            if selection.contains(where: CloudFiles.isEvictable) {
+            } else if selection.contains(where: CloudFiles.isEvictable) {
                 menu.addItem(withTitle: "Remove Download",
                              action: #selector(removeDownload(_:)),
                              keyEquivalent: "").target = self
