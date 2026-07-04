@@ -52,6 +52,11 @@ enum MainMenu {
                          action: #selector(ContentViewController.cut(_:)), keyEquivalent: "x")
         editMenu.addItem(withTitle: "Copy",
                          action: #selector(ContentViewController.copy(_:)), keyEquivalent: "c")
+        let copyPath = editMenu.addItem(
+            withTitle: "Copy Pathname",
+            action: #selector(ContentViewController.copyPathname(_:)),
+            keyEquivalent: "c")
+        copyPath.keyEquivalentModifierMask = [.command, .option]
         editMenu.addItem(withTitle: "Paste",
                          action: #selector(ContentViewController.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All",
