@@ -126,17 +126,17 @@ final class SidebarViewController: NSViewController,
     }
 
     private func rebuildEntries() {
-        entries = [.group("Favorites")] + favorites.map(Entry.location)
+        entries = [.group("Locations")] + volumes.map(Entry.location)
         if let icloud = CloudFiles.iCloudDriveURL() {
             entries += [.group("iCloud"), .location(icloud)]
         }
+        entries += [.group("Favorites")] + favorites.map(Entry.location)
         if !recentFolders.isEmpty {
             entries += [.group("Recent Folders")] + recentFolders.map(Entry.location)
         }
         if !recentDocuments.isEmpty {
             entries += [.group("Recent Documents")] + recentDocuments.map(Entry.location)
         }
-        entries += [.group("Locations")] + volumes.map(Entry.location)
         outlineView.reloadData()
     }
 
@@ -184,18 +184,29 @@ final class SidebarViewController: NSViewController,
         }
     }
 
-    /// Root children: row 0 is the "Favorites" group header, favorites follow.
-    /// Clamp any proposed drop into that range. A drop ON the header means
-    /// "front"; ON a favorite row means "right after it"; elsewhere, append.
+    /// Row index of the "Favorites" group header in the flat entries list.
+    private var favoritesHeaderIndex: Int {
+        entries.firstIndex { entry in
+            if case .group("Favorites") = entry { return true }
+            return false
+        } ?? 0
+    }
+
+    /// Favorites occupy the rows right after their group header. Clamp any
+    /// proposed drop into that range. A drop ON the header means "front"; ON
+    /// a favorite row means "right after it"; elsewhere, append.
     private func clampedDropIndex(_ proposed: Int, item: Any?) -> Int {
+        let header = favoritesHeaderIndex
+        let first = header + 1
+        let last = header + favorites.count + 1
         if proposed < 0 {
             if let index = item as? Int {
-                if index == 0 { return 1 }
-                if (1...favorites.count).contains(index) { return index + 1 }
+                if index == header { return first }
+                if (first...(last - 1)).contains(index) { return index + 1 }
             }
-            return favorites.count + 1
+            return last
         }
-        return min(max(proposed, 1), favorites.count + 1)
+        return min(max(proposed, first), last)
     }
 
     func outlineView(_ outlineView: NSOutlineView,
@@ -256,7 +267,8 @@ final class SidebarViewController: NSViewController,
         if let path = info.draggingPasteboard.string(forType: .foldersFavorite) {
             do {
                 try AppDelegate.shared.workspaceManager.moveFavorite(
-                    path: path, toIndex: clampedDropIndex(index, item: item) - 1,
+                    path: path,
+                    toIndex: clampedDropIndex(index, item: item) - favoritesHeaderIndex - 1,
                     in: windowWorkspaceID)
                 return true
             } catch {
@@ -266,7 +278,7 @@ final class SidebarViewController: NSViewController,
         }
         let folders = droppableFolders(from: info)
         guard !folders.isEmpty else { return false }
-        let favoritesIndex = clampedDropIndex(index, item: item) - 1
+        let favoritesIndex = clampedDropIndex(index, item: item) - favoritesHeaderIndex - 1
         // Option-drop adds the favorite to every workspace, not just the active one.
         let allWorkspaces = NSEvent.modifierFlags.contains(.option)
         do {
@@ -388,6 +400,13 @@ extension SidebarViewController: NSMenuDelegate {
             ejectItem.representedObject = url
             menu.addItem(ejectItem)
         }
+        if recentFolders.contains(url) || recentDocuments.contains(url) {
+            let item = NSMenuItem(title: "Remove from Recents",
+                                  action: #selector(removeRecent(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = url
+            menu.addItem(item)
+        }
         if favorites.contains(url) {
             let manager = AppDelegate.shared.workspaceManager!
             if manager.state.workspaces.count > 1 {
@@ -434,6 +453,20 @@ extension SidebarViewController: NSMenuDelegate {
     @objc private func showItemInfo(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
         GetInfoPanelController.show(for: url)
+    }
+
+    @objc private func removeRecent(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        do {
+            if recentFolders.contains(url) {
+                try AppDelegate.shared.workspaceManager.removeRecentFolder(
+                    path: url.path, in: windowWorkspaceID)
+            }
+            if recentDocuments.contains(url) {
+                try AppDelegate.shared.workspaceManager.removeRecentDocument(
+                    path: url.path, in: windowWorkspaceID)
+            }
+        } catch { NSAlert(error: error).runModal() }
     }
 
     @objc private func removeFavorite(_ sender: NSMenuItem) {

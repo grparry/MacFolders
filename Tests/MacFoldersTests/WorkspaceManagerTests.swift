@@ -86,6 +86,17 @@ final class WorkspaceManagerTests: XCTestCase {
         XCTAssertEqual(manager.state.workspaces.last!.name, "Default 2 2")
     }
 
+    func testRemoveRecents() throws {
+        let manager = try WorkspaceManager(store: store)
+        let id = manager.state.activeWorkspaceID
+        try manager.noteRecentFolder(path: "/Users", in: id)
+        try manager.noteRecentDocument(path: "/Users/doc.pdf", in: id)
+        try manager.removeRecentFolder(path: "/Users", in: id)
+        try manager.removeRecentDocument(path: "/Users/doc.pdf", in: id)
+        XCTAssertEqual(manager.state.workspaces[0].recentFolders, [])
+        XCTAssertEqual(manager.state.workspaces[0].recentDocuments, [])
+    }
+
     func testFavoritesExcludedFromRecentFolders() throws {
         let manager = try WorkspaceManager(store: store)
         let id = manager.state.activeWorkspaceID
