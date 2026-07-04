@@ -39,6 +39,41 @@ final class SidebarViewController: NSViewController,
         AppDelegate.shared.workspaceID(for: view.window)
     }
 
+    /// Anything Finder would put an eject button on: ejectable or removable
+    /// media, disk images, and network mounts. Never the boot volume.
+    static func isEjectable(_ url: URL) -> Bool {
+        guard url.path != "/" else { return false }
+        guard let values = try? url.resourceValues(forKeys:
+            [.isVolumeKey, .volumeIsEjectableKey, .volumeIsRemovableKey,
+             .volumeIsInternalKey, .volumeIsLocalKey]),
+            values.isVolume == true else { return false }
+        return values.volumeIsEjectable == true
+            || values.volumeIsRemovable == true
+            || values.volumeIsInternal == false
+            || values.volumeIsLocal == false
+    }
+
+    private func eject(_ url: URL) {
+        // Whole-device eject, like Finder — all partitions unmount together.
+        FileManager.default.unmountVolume(
+            at: url, options: [.allPartitionsAndEjectDisk]) { error in
+            DispatchQueue.main.async {
+                if let error { NSAlert(error: error).runModal() }
+            }
+        }
+    }
+
+    @objc private func ejectClicked(_ sender: NSButton) {
+        guard entries.indices.contains(sender.tag),
+              case .location(let url) = entries[sender.tag] else { return }
+        eject(url)
+    }
+
+    @objc private func ejectFromMenu(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        eject(url)
+    }
+
     override func loadView() {
         view = scrollView
     }
@@ -292,13 +327,32 @@ final class SidebarViewController: NSViewController,
             cell.addSubview(text)
             cell.textField = text
             cell.imageView = image
+            var trailing = cell.trailingAnchor
+            if Self.isEjectable(url) {
+                let ejectButton = NSButton(
+                    image: NSImage(systemSymbolName: "eject.fill",
+                                   accessibilityDescription: "Eject")!,
+                    target: self, action: #selector(ejectClicked(_:)))
+                ejectButton.isBordered = false
+                ejectButton.tag = index
+                ejectButton.contentTintColor = .secondaryLabelColor
+                ejectButton.translatesAutoresizingMaskIntoConstraints = false
+                cell.addSubview(ejectButton)
+                NSLayoutConstraint.activate([
+                    ejectButton.trailingAnchor.constraint(
+                        equalTo: cell.trailingAnchor, constant: -4),
+                    ejectButton.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                    ejectButton.widthAnchor.constraint(equalToConstant: 18),
+                ])
+                trailing = ejectButton.leadingAnchor
+            }
             NSLayoutConstraint.activate([
                 image.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 4),
                 image.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
                 image.widthAnchor.constraint(equalToConstant: 16),
                 image.heightAnchor.constraint(equalToConstant: 16),
                 text.leadingAnchor.constraint(equalTo: image.trailingAnchor, constant: 6),
-                text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -4),
+                text.trailingAnchor.constraint(equalTo: trailing, constant: -4),
                 text.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
             ])
             return cell
@@ -324,6 +378,16 @@ extension SidebarViewController: NSMenuDelegate {
         infoItem.target = self
         infoItem.representedObject = url
         menu.addItem(infoItem)
+        if Self.isEjectable(url) {
+            let name = (try? url.resourceValues(forKeys: [.volumeNameKey]))?
+                .volumeName ?? url.lastPathComponent
+            let ejectItem = NSMenuItem(title: "Eject “\(name)”",
+                                       action: #selector(ejectFromMenu(_:)),
+                                       keyEquivalent: "")
+            ejectItem.target = self
+            ejectItem.representedObject = url
+            menu.addItem(ejectItem)
+        }
         if favorites.contains(url) {
             let manager = AppDelegate.shared.workspaceManager!
             if manager.state.workspaces.count > 1 {
