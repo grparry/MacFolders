@@ -36,41 +36,49 @@ final class NetworkBrowser {
         self.browser = browser
     }
 
-    /// Resolve a discovered server to a connectable host string. Bonjour
-    /// service names are display names, not hostnames — a brief TCP dial
-    /// yields the real remote endpoint.
+    /// Resolve a discovered server to a connectable hostname. Bonjour
+    /// service names are display names, not hostnames — an mDNS SRV
+    /// resolution yields the real ".local" host.
     func resolveHost(of name: String, completion: @escaping (String?) -> Void) {
-        guard let endpoint = endpoints[name] else {
-            completion(nil)
-            return
-        }
-        let connection = NWConnection(to: endpoint, using: .tcp)
-        var finished = false
-        let finish: (String?) -> Void = { host in
-            guard !finished else { return }
-            finished = true
-            connection.cancel()
+        let resolver = ServiceResolver()
+        activeResolvers.append(resolver)
+        resolver.resolve(name: name) { [weak self] host in
+            self?.activeResolvers.removeAll { $0 === resolver }
             completion(host)
         }
-        connection.stateUpdateHandler = { state in
-            switch state {
-            case .ready:
-                if case .hostPort(let host, _)? = connection.currentPath?.remoteEndpoint {
-                    switch host {
-                    case .name(let hostname, _): finish(hostname)
-                    case .ipv4(let address): finish("\(address)")
-                    case .ipv6(let address): finish("[\(address)]")
-                    @unknown default: finish(nil)
-                    }
-                } else {
-                    finish(nil)
-                }
-            case .failed, .cancelled:
-                finish(nil)
-            default:
-                break
-            }
-        }
-        connection.start(queue: .main)
+    }
+
+    private var activeResolvers: [ServiceResolver] = []
+}
+
+/// One-shot mDNS resolver for an _smb._tcp service instance.
+private final class ServiceResolver: NSObject, NetServiceDelegate {
+    private var service: NetService?
+    private var completion: ((String?) -> Void)?
+
+    func resolve(name: String, completion: @escaping (String?) -> Void) {
+        self.completion = completion
+        let service = NetService(domain: "local.", type: "_smb._tcp.", name: name)
+        service.delegate = self
+        self.service = service
+        service.resolve(withTimeout: 5)
+    }
+
+    private func finish(_ host: String?) {
+        completion?(host)
+        completion = nil
+        service?.stop()
+        service = nil
+    }
+
+    func netServiceDidResolveAddress(_ sender: NetService) {
+        let host = sender.hostName?.hasSuffix(".") == true
+            ? String(sender.hostName!.dropLast()) : sender.hostName
+        finish(host)
+    }
+
+    func netService(_ sender: NetService,
+                    didNotResolve errorDict: [String: NSNumber]) {
+        finish(nil)
     }
 }
