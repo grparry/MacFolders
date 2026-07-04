@@ -172,7 +172,9 @@ final class IconViewController: NSViewController, DirectoryView,
                                            for: indexPath)
         let file = model.items[indexPath.item]
         item.textField?.stringValue = file.name
-        let icon = NSWorkspace.shared.icon(forFile: file.url.path)
+        item.textField?.textColor = file.isCloudPlaceholder
+            ? .secondaryLabelColor : .labelColor
+        let icon = file.icon
         icon.size = NSSize(width: 64, height: 64)
         item.imageView?.image = icon
         return item

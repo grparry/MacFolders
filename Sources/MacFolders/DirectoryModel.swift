@@ -8,6 +8,9 @@ struct FileItem: Equatable {
     let size: Int64
     let dateModified: Date
     let kind: String
+    /// An iCloud file not downloaded locally (url points at the ".…​.icloud"
+    /// placeholder; name is the real file's name).
+    var isCloudPlaceholder = false
 }
 
 enum SortKey: String, Codable {
@@ -37,13 +40,31 @@ final class DirectoryModel {
     /// Used for the root (reload) and for expanded subfolders in list view.
     func items(of url: URL) throws -> [FileItem] {
         let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey,
-                                      .contentModificationDateKey, .contentTypeKey]
+                                      .contentModificationDateKey, .contentTypeKey,
+                                      .isHiddenKey]
+        // Hidden files are filtered manually (not via .skipsHiddenFiles)
+        // because undownloaded iCloud files are hidden ".name.icloud"
+        // placeholders that must surface as visible entries.
         let urls = try FileManager.default.contentsOfDirectory(
-            at: url, includingPropertiesForKeys: keys,
-            options: showHidden ? [] : [.skipsHiddenFiles])
+            at: url, includingPropertiesForKeys: keys, options: [])
         var loaded: [FileItem] = []
         for url in urls {
             let values = try url.resourceValues(forKeys: Set(keys))
+            if let realName = CloudFiles.materializedName(
+                fromPlaceholder: url.lastPathComponent) {
+                let ext = (realName as NSString).pathExtension
+                loaded.append(FileItem(
+                    url: url,
+                    name: realName,
+                    isDirectory: false,
+                    size: CloudFiles.placeholderSize(at: url) ?? 0,
+                    dateModified: values.contentModificationDate ?? .distantPast,
+                    kind: UTType(filenameExtension: ext)?.localizedDescription
+                        ?? "Document",
+                    isCloudPlaceholder: true))
+                continue
+            }
+            if !showHidden, values.isHidden == true { continue }
             let isDirectory = values.isDirectory ?? false
             loaded.append(FileItem(
                 url: url,
