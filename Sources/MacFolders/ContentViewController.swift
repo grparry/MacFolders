@@ -152,9 +152,91 @@ final class ContentViewController: NSViewController {
         onOpenInNewTab?(url)
     }
 
+    /// Finder-parity Open With submenu: the common default app first and
+    /// labeled, the rest alphabetical with versions disambiguating duplicate
+    /// names, apps that can open EVERY selected item, and Other… at the end.
+    func populateOpenWithMenu(_ submenu: NSMenu) {
+        submenu.removeAllItems()
+        let targets = actionTargets
+        guard !targets.isEmpty else { return }
+        let appSets = targets.map { Set(NSWorkspace.shared.urlsForApplications(toOpen: $0)) }
+        var apps = Array(appSets.dropFirst().reduce(appSets[0]) { $0.intersection($1) })
+        let defaults = Set(targets.compactMap { NSWorkspace.shared.urlForApplication(toOpen: $0) })
+        let commonDefault = defaults.count == 1 ? defaults.first : nil
+        apps.removeAll { $0 == commonDefault }
+        let names = Dictionary(grouping: apps) { app in
+            let name = FileManager.default.displayName(atPath: app.path)
+            return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
+        }
+        func title(for app: URL) -> String {
+            var name = FileManager.default.displayName(atPath: app.path)
+            if name.hasSuffix(".app") { name = String(name.dropLast(4)) }
+            guard names[name]?.count ?? 0 > 1,
+                  let version = Bundle(url: app)?.infoDictionary?["CFBundleShortVersionString"]
+                    as? String else { return name }
+            return "\(name) (\(version))"
+        }
+        func addApp(_ app: URL, suffix: String = "") {
+            let item = NSMenuItem(title: title(for: app) + suffix,
+                                  action: #selector(openWithApp(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = app
+            let icon = NSWorkspace.shared.icon(forFile: app.path)
+            icon.size = NSSize(width: 16, height: 16)
+            item.image = icon
+            submenu.addItem(item)
+        }
+        if let commonDefault {
+            addApp(commonDefault, suffix: " (default)")
+            submenu.addItem(.separator())
+        }
+        for app in apps.sorted(by: {
+            title(for: $0).localizedStandardCompare(title(for: $1)) == .orderedAscending
+        }) {
+            addApp(app)
+        }
+        submenu.addItem(.separator())
+        let other = NSMenuItem(title: "Other…",
+                               action: #selector(openWithOther(_:)), keyEquivalent: "")
+        other.target = self
+        submenu.addItem(other)
+    }
+
+    /// Any-app picker with Finder's "Always Open With" option (a per-file
+    /// LaunchServices binding, not a type-wide default).
+    @objc func openWithOther(_ sender: Any?) {
+        let targets = actionTargets
+        guard !targets.isEmpty else { return }
+        let panel = NSOpenPanel()
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Open"
+        let always = NSButton(checkboxWithTitle: "Always Open With", target: nil, action: nil)
+        panel.accessoryView = always
+        panel.isAccessoryViewDisclosed = true
+        guard panel.runModal() == .OK, let appURL = panel.url else { return }
+        if always.state == .on {
+            Task { @MainActor in
+                do {
+                    for url in targets {
+                        try await NSWorkspace.shared.setDefaultApplication(
+                            at: appURL, toOpenFileAt: url)
+                    }
+                } catch {
+                    NSAlert(error: error).runModal()
+                }
+            }
+        }
+        openTargets(targets, withApplicationAt: appURL)
+    }
+
     @objc func openWithApp(_ sender: NSMenuItem) {
         guard let appURL = sender.representedObject as? URL else { return }
-        let targets = actionTargets
+        openTargets(actionTargets, withApplicationAt: appURL)
+    }
+
+    private func openTargets(_ targets: [URL], withApplicationAt appURL: URL) {
         NSWorkspace.shared.open(targets, withApplicationAt: appURL,
                                 configuration: NSWorkspace.OpenConfiguration()) { _, error in
             DispatchQueue.main.async {
@@ -312,27 +394,9 @@ extension ContentViewController: NSMenuDelegate {
 
             let openWith = NSMenuItem(title: "Open With", action: nil, keyEquivalent: "")
             let submenu = NSMenu()
-            if selection.count == 1, let url = selection.first {
-                var apps = NSWorkspace.shared.urlsForApplications(toOpen: url)
-                if let defaultApp = NSWorkspace.shared.urlForApplication(toOpen: url),
-                   let index = apps.firstIndex(of: defaultApp) {
-                    apps.remove(at: index)
-                    apps.insert(defaultApp, at: 0)
-                }
-                for appURL in apps {
-                    let name = FileManager.default.displayName(atPath: appURL.path)
-                    let item = NSMenuItem(title: name,
-                                          action: #selector(openWithApp(_:)), keyEquivalent: "")
-                    item.target = self
-                    item.representedObject = appURL
-                    let icon = NSWorkspace.shared.icon(forFile: appURL.path)
-                    icon.size = NSSize(width: 16, height: 16)
-                    item.image = icon
-                    submenu.addItem(item)
-                }
-            }
+            populateOpenWithMenu(submenu)
             openWith.submenu = submenu
-            openWith.isEnabled = selection.count == 1
+            openWith.isEnabled = !selection.isEmpty
             menu.addItem(openWith)
             menu.addItem(.separator())
             if selection.contains(where: CloudFiles.isInICloud) {

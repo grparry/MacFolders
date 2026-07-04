@@ -30,6 +30,12 @@ enum MainMenu {
                                          keyEquivalent: "n")
         newFolder.keyEquivalentModifierMask = [.command, .shift]
         fileMenu.addItem(.separator())
+        let openWith = fileMenu.addItem(withTitle: "Open With", action: nil,
+                                        keyEquivalent: "")
+        let openWithMenu = NSMenu(title: "Open With")
+        openWithMenu.delegate = AppDelegate.shared
+        openWith.submenu = openWithMenu
+        fileMenu.addItem(.separator())
         let getInfo = fileMenu.addItem(withTitle: "Get Info",
                                        action: #selector(AppDelegate.showItemInfo(_:)),
                                        keyEquivalent: "i")
