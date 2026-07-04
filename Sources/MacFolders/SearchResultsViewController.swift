@@ -61,6 +61,7 @@ final class SearchResultsViewController: NSViewController,
         }
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.allowsMultipleSelection = true
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.rowHeight = 20
         tableView.target = self
@@ -88,7 +89,11 @@ final class SearchResultsViewController: NSViewController,
             guard let self else { return }
             self.results += batch
             self.capReached = complete && self.results.count >= SearchEngine.resultCap
+            // Results only append, so indices are stable — keep the user's
+            // in-progress selection across streaming reloads.
+            let selected = self.tableView.selectedRowIndexes
             self.tableView.reloadData()
+            self.tableView.selectRowIndexes(selected, byExtendingSelection: false)
             self.statusLabel.stringValue = complete
                 ? "\(self.results.count) result\(self.results.count == 1 ? "" : "s")"
                     + (self.capReached ? " (first \(SearchEngine.resultCap) shown)" : "")
@@ -131,9 +136,23 @@ final class SearchResultsViewController: NSViewController,
             folder: folder)
     }
 
+    /// Clicked row when outside the selection; the whole selection when
+    /// inside it — the standard multi-selection contract.
+    private func actionTargets() -> [URL] {
+        let clicked = tableView.clickedRow
+        if clicked >= 0, tableView.selectedRowIndexes.contains(clicked) {
+            return tableView.selectedRowIndexes.compactMap {
+                results.indices.contains($0) ? results[$0] : nil
+            }
+        }
+        if results.indices.contains(clicked) { return [results[clicked]] }
+        return tableView.selectedRowIndexes.compactMap {
+            results.indices.contains($0) ? results[$0] : nil
+        }
+    }
+
     @objc private func doubleClicked() {
-        guard results.indices.contains(tableView.clickedRow) else { return }
-        onOpen?(results[tableView.clickedRow])
+        for url in actionTargets() { onOpen?(url) }
     }
 
     // MARK: Table
@@ -203,38 +222,38 @@ final class SearchResultsViewController: NSViewController,
 extension SearchResultsViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        guard results.indices.contains(tableView.clickedRow) else { return }
-        let url = results[tableView.clickedRow]
+        guard !actionTargets().isEmpty else { return }
         for (title, action) in [("Open", #selector(menuOpen(_:))),
                                 ("Show in Enclosing Folder", #selector(menuReveal(_:))),
                                 ("Copy Pathname", #selector(menuCopyPath(_:))),
                                 ("Get Info", #selector(menuGetInfo(_:)))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
-            item.representedObject = url
             menu.addItem(item)
         }
     }
 
     @objc private func menuOpen(_ sender: NSMenuItem) {
-        guard let url = sender.representedObject as? URL else { return }
-        onOpen?(url)
+        for url in actionTargets() { onOpen?(url) }
     }
 
     @objc private func menuReveal(_ sender: NSMenuItem) {
-        guard let url = sender.representedObject as? URL else { return }
+        guard let url = actionTargets().first else { return }
         onRevealInFolder?(url)
     }
 
     @objc private func menuCopyPath(_ sender: NSMenuItem) {
-        guard let url = sender.representedObject as? URL else { return }
+        let targets = actionTargets()
+        guard !targets.isEmpty else { return }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(url.path, forType: .string)
+        pasteboard.setString(targets.map(\.path).joined(separator: "\n"),
+                             forType: .string)
     }
 
     @objc private func menuGetInfo(_ sender: NSMenuItem) {
-        guard let url = sender.representedObject as? URL else { return }
-        GetInfoPanelController.show(for: url)
+        for url in actionTargets() {
+            GetInfoPanelController.show(for: url)
+        }
     }
 }

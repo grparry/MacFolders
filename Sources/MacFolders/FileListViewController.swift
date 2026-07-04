@@ -117,6 +117,26 @@ final class FileListViewController: NSViewController, DirectoryView,
         UserDefaults.standard.set(overrides, forKey: "listVisibleColumns")
     }
 
+
+    var persistedExpandedPaths: [String] {
+        expandedURLs().map(\.path)
+    }
+
+    func applyPersistedExpansion(_ paths: [String]) {
+        restoreExpansion(Set(paths.map(URL.init(fileURLWithPath:))))
+        syncExpandedWatchers()
+    }
+
+    var persistedScrollOffset: CGFloat {
+        get { scrollView.contentView.bounds.origin.y }
+        set {
+            var origin = scrollView.contentView.bounds.origin
+            origin.y = newValue
+            scrollView.contentView.scroll(to: origin)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+    }
+
     func modelDidChange() {
         syncColumnVisibility()
         let expanded = expandedURLs()

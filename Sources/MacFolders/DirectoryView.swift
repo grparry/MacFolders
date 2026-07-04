@@ -10,6 +10,9 @@ protocol DirectoryView: NSViewController {
     var activeDirectory: URL { get }
     /// Model contents changed (reload or directory event); re-render.
     func modelDidChange()
+    /// Scroll position captured into / restored from workspace state.
+    /// Vertical for list and icon views; horizontal for columns.
+    var persistedScrollOffset: CGFloat { get set }
 }
 
 extension DirectoryView {

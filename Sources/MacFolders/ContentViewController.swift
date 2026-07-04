@@ -67,6 +67,26 @@ final class ContentViewController: NSViewController {
         currentDirectoryView?.modelDidChange()
     }
 
+    // MARK: Per-tab view state persistence
+
+    var persistedExpandedPaths: [String]? {
+        (modeViewControllers[.list] as? FileListViewController)?.persistedExpandedPaths
+    }
+
+    var persistedScrollOffset: CGFloat? {
+        currentDirectoryView?.persistedScrollOffset
+    }
+
+    func restorePersistedViewState(expandedPaths: [String]?, scrollOffset: CGFloat?) {
+        if let expandedPaths, !expandedPaths.isEmpty,
+           let list = currentDirectoryView as? FileListViewController {
+            list.applyPersistedExpansion(expandedPaths)
+        }
+        if let scrollOffset {
+            currentDirectoryView?.persistedScrollOffset = scrollOffset
+        }
+    }
+
     // MARK: Search (takes over the content area)
 
     private var searchVC: SearchResultsViewController?

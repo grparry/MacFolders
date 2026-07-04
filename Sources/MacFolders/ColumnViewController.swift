@@ -152,6 +152,17 @@ final class ColumnViewController: NSViewController, DirectoryView,
             NSSize(width: max(x, horizontalScroll.contentSize.width), height: height))
     }
 
+
+    var persistedScrollOffset: CGFloat {
+        get { horizontalScroll.contentView.bounds.origin.x }
+        set {
+            var origin = horizontalScroll.contentView.bounds.origin
+            origin.x = newValue
+            horizontalScroll.contentView.scroll(to: origin)
+            horizontalScroll.reflectScrolledClipView(horizontalScroll.contentView)
+        }
+    }
+
     func modelDidChange() {
         guard isViewLoaded, !columns.isEmpty else { return }
         refreshColumn(at: 0)

@@ -82,4 +82,26 @@ final class WorkspaceStoreTests: XCTestCase {
         try nested.save(sampleState())
         XCTAssertNotNil(try nested.load())
     }
+
+    func testTabStateViewStateFieldsRoundTrip() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = WorkspaceStore(fileURL: url)
+        let workspace = Workspace(id: UUID(), name: "W", live: [], saved: [],
+                                  favorites: [])
+        var state = AppState(workspaces: [workspace],
+                             activeWorkspaceID: workspace.id)
+        state.workspaces[0].live = [WindowState(
+            frame: .init(x: 0, y: 0, width: 800, height: 600),
+            tabs: [TabState(path: "/tmp", viewMode: .list, sidebarWidth: 180,
+                            expandedPaths: ["/tmp/a", "/tmp/a/b"],
+                            scrollOffset: 42.5)],
+            selectedTab: 0)]
+        try store.save(state)
+        let loaded = try XCTUnwrap(store.load())
+        let tab = loaded.workspaces[0].live[0].tabs[0]
+        XCTAssertEqual(tab.expandedPaths, ["/tmp/a", "/tmp/a/b"])
+        XCTAssertEqual(tab.scrollOffset, 42.5)
+    }
 }

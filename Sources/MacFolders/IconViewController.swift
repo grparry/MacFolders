@@ -76,6 +76,17 @@ final class IconViewController: NSViewController, DirectoryView,
         }
     }
 
+
+    var persistedScrollOffset: CGFloat {
+        get { scrollView.contentView.bounds.origin.y }
+        set {
+            var origin = scrollView.contentView.bounds.origin
+            origin.y = newValue
+            scrollView.contentView.scroll(to: origin)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+    }
+
     func modelDidChange() {
         let selected = Set(selectedURLs)
         collectionView.reloadData()
