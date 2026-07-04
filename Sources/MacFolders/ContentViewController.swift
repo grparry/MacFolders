@@ -202,6 +202,16 @@ final class ContentViewController: NSViewController {
     /// Invalidated automatically when anything else lands on the pasteboard.
     private static var pendingCut: (urls: [URL], changeCount: Int)?
 
+    /// POSIX path(s) of the selection — or the folder itself when nothing
+    /// is selected — one per line.
+    @objc func copyPathname(_ sender: Any?) {
+        let urls = actionTargets.isEmpty ? [actionDirectory] : actionTargets
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(urls.map(\.path).joined(separator: "\n"),
+                             forType: .string)
+    }
+
     @objc func copy(_ sender: Any?) {
         let urls = actionTargets
         guard !urls.isEmpty else { return }
@@ -355,12 +365,16 @@ extension ContentViewController: NSMenuDelegate {
                          action: #selector(cut(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Copy",
                          action: #selector(copy(_:)), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Copy Pathname",
+                         action: #selector(copyPathname(_:)), keyEquivalent: "").target = self
         }
         menu.addItem(withTitle: "Paste",
                      action: #selector(paste(_:)), keyEquivalent: "").target = self
         menu.addItem(withTitle: "New Folder",
                      action: #selector(newFolder(_:)), keyEquivalent: "").target = self
         if selection.isEmpty {
+            menu.addItem(withTitle: "Copy Pathname",
+                         action: #selector(copyPathname(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Get Info",
                          action: #selector(showItemInfo(_:)), keyEquivalent: "").target = self
         }

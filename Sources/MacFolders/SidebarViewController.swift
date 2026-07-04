@@ -495,6 +495,11 @@ extension SidebarViewController: NSMenuDelegate {
         infoItem.target = self
         infoItem.representedObject = url
         menu.addItem(infoItem)
+        let pathItem = NSMenuItem(title: "Copy Pathname",
+                                  action: #selector(copyPathname(_:)), keyEquivalent: "")
+        pathItem.target = self
+        pathItem.representedObject = url
+        menu.addItem(pathItem)
         if url == Self.trashURL {
             let emptyItem = NSMenuItem(title: "Empty Trash…",
                                        action: #selector(emptyTrash(_:)),
@@ -600,6 +605,13 @@ extension SidebarViewController: NSMenuDelegate {
             }
         } catch { NSAlert(error: error).runModal() }
         rebuildEntries()  // trash icon back to empty
+    }
+
+    @objc private func copyPathname(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(url.path, forType: .string)
     }
 
     @objc private func removeRecent(_ sender: NSMenuItem) {
