@@ -91,6 +91,13 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func open(_ url: URL) {
+        // Opening an undownloaded iCloud file starts its download; the
+        // directory watcher refreshes the view as it materializes.
+        if CloudFiles.isPlaceholder(url) {
+            do { try CloudFiles.startDownload(itemAt: url) }
+            catch { NSAlert(error: error).runModal() }
+            return
+        }
         // Follow symlinks so a link to a folder navigates in-app (like Finder)
         // instead of handing off to the system.
         let resolved = url.resolvingSymlinksInPath()
@@ -129,8 +136,13 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func updateTitle() {
-        let folder = currentURL.lastPathComponent.isEmpty
-            ? currentURL.path : currentURL.lastPathComponent
+        // displayName localizes system folders ("iCloud Drive" instead of
+        // "com~apple~CloudDocs") and falls back to the last path component.
+        let display = FileManager.default.displayName(atPath: currentURL.path)
+        let folder = display.isEmpty
+            ? (currentURL.lastPathComponent.isEmpty
+                ? currentURL.path : currentURL.lastPathComponent)
+            : display
         // Title bar: "workspace — folder" so the Dock's window list
         // disambiguates. Tab label: just the folder — the workspace prefix is
         // redundant inside one group's tab bar.

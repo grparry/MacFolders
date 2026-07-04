@@ -101,3 +101,41 @@ final class DirectoryModelTests: XCTestCase {
         model.stopWatching()
     }
 }
+
+extension DirectoryModelTests {
+    func testCloudPlaceholderMapping() {
+        XCTAssertEqual(CloudFiles.materializedName(fromPlaceholder: ".Report.pdf.icloud"),
+                       "Report.pdf")
+        XCTAssertNil(CloudFiles.materializedName(fromPlaceholder: "Report.pdf"))
+        XCTAssertNil(CloudFiles.materializedName(fromPlaceholder: ".hidden"))
+        XCTAssertNil(CloudFiles.materializedName(fromPlaceholder: ".icloud"))
+        XCTAssertNil(CloudFiles.materializedName(fromPlaceholder: "notdot.icloud"))
+    }
+
+    func testPlaceholdersSurfaceWhileDotfilesStayHidden() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let plist = try PropertyListSerialization.data(
+            fromPropertyList: ["NSURLFileSizeKey": 12345], format: .binary, options: 0)
+        try plist.write(to: dir.appendingPathComponent(".Report.pdf.icloud"))
+        try Data().write(to: dir.appendingPathComponent(".DS_Store"))
+        try Data().write(to: dir.appendingPathComponent("visible.txt"))
+
+        let model = DirectoryModel(directoryURL: dir)
+        try model.reload()
+        XCTAssertEqual(model.items.map(\.name), ["Report.pdf", "visible.txt"])
+        let placeholder = model.items[0]
+        XCTAssertTrue(placeholder.isCloudPlaceholder)
+        XCTAssertEqual(placeholder.size, 12345)
+        XCTAssertFalse(model.items[1].isCloudPlaceholder)
+
+        // Placeholders present as their materialized name even when hidden
+        // files are shown — one consistent representation.
+        model.showHidden = true
+        try model.reload()
+        XCTAssertEqual(model.items.map(\.name),
+                       [".DS_Store", "Report.pdf", "visible.txt"])
+    }
+}

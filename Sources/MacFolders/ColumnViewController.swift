@@ -333,7 +333,9 @@ final class ColumnViewController: NSViewController, DirectoryView,
         let cell = tableView.makeView(withIdentifier: cellID, owner: self) as? NSTableCellView
             ?? Self.makeCell(id: cellID)
         cell.textField?.stringValue = item.name
-        let icon = NSWorkspace.shared.icon(forFile: item.url.path)
+        cell.textField?.textColor = item.isCloudPlaceholder
+            ? .secondaryLabelColor : .labelColor
+        let icon = item.icon
         icon.size = NSSize(width: 16, height: 16)
         cell.imageView?.image = icon
         if let chevron = cell.subviews.first(where: { $0.identifier?.rawValue == "chevron" }) {

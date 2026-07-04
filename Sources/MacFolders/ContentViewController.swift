@@ -114,6 +114,23 @@ final class ContentViewController: NSViewController {
         for url in actionTargets { onOpen?(url) }
     }
 
+    @objc func downloadFromCloud(_ sender: Any?) {
+        do {
+            for url in actionTargets where CloudFiles.isPlaceholder(url) {
+                try CloudFiles.startDownload(itemAt: url)
+            }
+        } catch { NSAlert(error: error).runModal() }
+    }
+
+    /// Frees local space; the file stays in iCloud as a placeholder.
+    @objc func removeDownload(_ sender: Any?) {
+        do {
+            for url in actionTargets where CloudFiles.isEvictable(url) {
+                try CloudFiles.evict(itemAt: url)
+            }
+        } catch { NSAlert(error: error).runModal() }
+    }
+
     @objc func openInNewTab(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
         onOpenInNewTab?(url)
@@ -282,6 +299,16 @@ extension ContentViewController: NSMenuDelegate {
             openWith.isEnabled = selection.count == 1
             menu.addItem(openWith)
             menu.addItem(.separator())
+            if selection.contains(where: CloudFiles.isPlaceholder) {
+                menu.addItem(withTitle: "Download Now",
+                             action: #selector(downloadFromCloud(_:)),
+                             keyEquivalent: "").target = self
+            }
+            if selection.contains(where: CloudFiles.isEvictable) {
+                menu.addItem(withTitle: "Remove Download",
+                             action: #selector(removeDownload(_:)),
+                             keyEquivalent: "").target = self
+            }
             menu.addItem(withTitle: "Get Info",
                          action: #selector(showItemInfo(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Rename…",
