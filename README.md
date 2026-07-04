@@ -28,6 +28,13 @@ MacFolders makes the window itself the unit of persistence.
   (including drops on sidebar folders), copy/paste, **cut/paste that moves**
   (the famous Finder omission), rename in place, duplicate, trash, New Folder
   targeted at the column you clicked.
+- **Search that respects you** — Cmd+F searches the *current folder* by
+  default, never your whole Mac (This Mac is one click, never the default),
+  with an explicit Name / Contents switch instead of hidden token magic.
+  Folder-scoped name search walks the filesystem directly, so it finds
+  dotfiles and everything inside `.git` and `node_modules` — results
+  Spotlight-backed Finder can't show. Content and whole-Mac searches use
+  the Spotlight index.
 - **iCloud Drive, properly** — sidebar section; undownloaded (dataless)
   files shown with accurate In iCloud / Downloaded status and Finder's cloud
   glyphs; open-to-download; Download Now, Remove Download, and Keep

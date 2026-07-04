@@ -5,6 +5,8 @@ final class ContentViewController: NSViewController {
     private(set) var viewMode: ViewMode
     var onOpen: ((URL) -> Void)?
     var onOpenInNewTab: ((URL) -> Void)?
+    /// Owner clears its toolbar search field when search ends from inside.
+    var onSearchExited: (() -> Void)?
     /// The displayed directory itself was moved or deleted; the owner should
     /// navigate somewhere that still exists.
     var onDirectoryVanished: (() -> Void)?
@@ -65,6 +67,59 @@ final class ContentViewController: NSViewController {
         currentDirectoryView?.modelDidChange()
     }
 
+    // MARK: Search (takes over the content area)
+
+    private var searchVC: SearchResultsViewController?
+    var isSearching: Bool { searchVC?.view.superview != nil }
+
+    func showSearch(term: String) {
+        if searchVC == nil {
+            let vc = SearchResultsViewController()
+            vc.onOpen = { [weak self] url in
+                guard let self else { return }
+                let isDirectory = (try? url.resourceValues(
+                    forKeys: [.isDirectoryKey]))?.isDirectory == true
+                if isDirectory {
+                    self.endSearch()
+                    self.onOpen?(url)
+                } else {
+                    NSWorkspace.shared.open(url)
+                    AppDelegate.shared.noteRecentDocument(
+                        url, workspaceID: AppDelegate.shared.workspaceID(for: self.view.window))
+                }
+            }
+            vc.onRevealInFolder = { [weak self] url in
+                guard let self else { return }
+                self.endSearch()
+                self.onOpen?(url.deletingLastPathComponent())
+            }
+            addChild(vc)
+            searchVC = vc
+        }
+        guard let searchVC else { return }
+        if searchVC.view.superview == nil {
+            searchVC.view.frame = view.bounds
+            searchVC.view.autoresizingMask = [.width, .height]
+            view.addSubview(searchVC.view)
+            currentDirectoryView?.view.isHidden = true
+            searchVC.beginSession(folder: model.directoryURL)
+        }
+        searchVC.update(term: term)
+    }
+
+    func exitSearch() {
+        guard let searchVC, searchVC.view.superview != nil else { return }
+        searchVC.cancel()
+        searchVC.view.removeFromSuperview()
+        currentDirectoryView?.view.isHidden = false
+    }
+
+    /// Search ended by an in-results action rather than the field clearing.
+    private func endSearch() {
+        exitSearch()
+        onSearchExited?()
+    }
+
     private func installView(for mode: ViewMode) {
         currentDirectoryView?.view.removeFromSuperview()
         let next: any DirectoryView
@@ -94,6 +149,10 @@ final class ContentViewController: NSViewController {
         next.view.autoresizingMask = [.width, .height]
         view.addSubview(next.view)
         currentDirectoryView = next
+        if let searchVC, searchVC.view.superview != nil {
+            next.view.isHidden = true
+            view.addSubview(searchVC.view)   // stay above the swapped view
+        }
     }
 
     // MARK: Context menu + file actions
