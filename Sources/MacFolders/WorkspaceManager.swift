@@ -390,6 +390,18 @@ final class WorkspaceManager {
         }
     }
 
+    func removeRecentFolder(path: String, in id: UUID) throws {
+        try mutateWorkspace(id) { workspace in
+            workspace.recentFolders.removeAll { $0 == path }
+        }
+    }
+
+    func removeRecentDocument(path: String, in id: UUID) throws {
+        try mutateWorkspace(id) { workspace in
+            workspace.recentDocuments.removeAll { $0 == path }
+        }
+    }
+
     func noteRecentDocument(path: String) throws {
         try noteRecentDocument(path: path, in: state.activeWorkspaceID)
     }
