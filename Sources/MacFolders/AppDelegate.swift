@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowBecameKey(_:)),
             name: NSWindow.didBecomeKeyNotification, object: nil)
+        installTabBarMenuMonitor()
 
         // Restore every workspace that was open, keying the last-active one.
         let state = workspaceManager.state
@@ -72,6 +73,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         pendingAutosave?.cancel()
         persistLiveStateNow()
+    }
+
+    // MARK: Tab bar context menu
+
+    /// The native tab bar owns its right-click menu with no public hook, so
+    /// tab-band right-clicks are intercepted and get our menu instead —
+    /// Copy Pathname plus equivalents of the standard items.
+    private func installTabBarMenuMonitor() {
+        NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
+            guard let self,
+                  let window = event.window,
+                  window.windowController is BrowserWindowController,
+                  let group = window.tabGroup, group.isTabBarVisible else { return event }
+            // The tab bar is the band directly above the content layout area.
+            let y = event.locationInWindow.y
+            let bandBottom = window.contentLayoutRect.maxY
+            guard y > bandBottom, y <= bandBottom + 28 else { return event }
+            // Native tabs are equal-width across the window.
+            let tabs = group.windows
+            let index = min(max(Int(event.locationInWindow.x
+                / (window.frame.width / CGFloat(tabs.count))), 0), tabs.count - 1)
+            guard let controller = tabs[index].windowController
+                    as? BrowserWindowController else { return event }
+            self.showTabMenu(for: controller, event: event)
+            return nil
+        }
+    }
+
+    private func showTabMenu(for controller: BrowserWindowController, event: NSEvent) {
+        guard let window = event.window else { return }
+        let menu = NSMenu()
+        let copyItem = NSMenuItem(title: "Copy Pathname",
+                                  action: #selector(copyTabPathname(_:)), keyEquivalent: "")
+        copyItem.target = self
+        copyItem.representedObject = controller.currentURL
+        menu.addItem(copyItem)
+        menu.addItem(.separator())
+        let closeItem = NSMenuItem(title: "Close Tab",
+                                   action: #selector(NSWindow.performClose(_:)),
+                                   keyEquivalent: "")
+        closeItem.target = controller.window
+        menu.addItem(closeItem)
+        if controller.window?.tabGroup?.windows.count ?? 0 > 1 {
+            let moveItem = NSMenuItem(title: "Move Tab to New Window",
+                                      action: #selector(NSWindow.moveTabToNewWindow(_:)),
+                                      keyEquivalent: "")
+            moveItem.target = controller.window
+            menu.addItem(moveItem)
+        }
+        menu.popUp(positioning: nil,
+                   at: window.convertPoint(toScreen: event.locationInWindow),
+                   in: nil)
+    }
+
+    @objc private func copyTabPathname(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(url.path, forType: .string)
     }
 
     // MARK: Current workspace (the key window's)
