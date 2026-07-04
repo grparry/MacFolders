@@ -92,6 +92,9 @@ final class SidebarViewController: NSViewController,
 
     private func rebuildEntries() {
         entries = [.group("Favorites")] + favorites.map(Entry.location)
+        if let icloud = CloudFiles.iCloudDriveURL() {
+            entries += [.group("iCloud"), .location(icloud)]
+        }
         if !recentFolders.isEmpty {
             entries += [.group("Recent Folders")] + recentFolders.map(Entry.location)
         }
@@ -268,13 +271,19 @@ final class SidebarViewController: NSViewController,
             return cell
         case .location(let url):
             let cell = NSTableCellView()
+            let isICloudDrive = url == CloudFiles.iCloudDriveURL()
             let values = try? url.resourceValues(forKeys: [.isVolumeKey, .volumeNameKey])
-            let name = (values?.isVolume == true ? values?.volumeName : nil)
+            let name = isICloudDrive ? "iCloud Drive"
+                : (values?.isVolume == true ? values?.volumeName : nil)
                 ?? url.lastPathComponent
             let text = NSTextField(labelWithString: name.isEmpty ? url.path : name)
             text.lineBreakMode = .byTruncatingMiddle
             let image = NSImageView()
-            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            let icon = isICloudDrive
+                ? (NSImage(systemSymbolName: "icloud",
+                           accessibilityDescription: "iCloud Drive")
+                    ?? NSWorkspace.shared.icon(forFile: url.path))
+                : NSWorkspace.shared.icon(forFile: url.path)
             icon.size = NSSize(width: 16, height: 16)
             image.image = icon
             text.translatesAutoresizingMaskIntoConstraints = false

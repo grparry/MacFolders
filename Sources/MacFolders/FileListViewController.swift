@@ -229,7 +229,9 @@ final class FileListViewController: NSViewController, DirectoryView,
             cell.textField?.stringValue = file.name
             cell.textField?.isEditable = true
             cell.textField?.delegate = self
-            let icon = NSWorkspace.shared.icon(forFile: file.url.path)
+            cell.textField?.textColor = file.isCloudPlaceholder
+                ? .secondaryLabelColor : .labelColor
+            let icon = file.icon
             icon.size = NSSize(width: 16, height: 16)
             cell.imageView?.image = icon
         case "dateModified":
