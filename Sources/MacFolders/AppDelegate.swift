@@ -296,6 +296,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         catch { NSAlert(error: error).runModal() }
     }
 
+    /// View > Show Hidden Files (explicit target — the responder chain only
+    /// reaches the content view when focus happens to be in the file list).
+    @objc func toggleHiddenFiles(_ sender: Any?) {
+        UserDefaults.standard.set(!ContentViewController.showHiddenFiles,
+                                  forKey: "showHiddenFiles")
+        NotificationCenter.default.post(
+            name: ContentViewController.hiddenFilesChanged, object: nil)
+    }
+
+    @objc func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(toggleHiddenFiles(_:)) {
+            item.state = ContentViewController.showHiddenFiles ? .on : .off
+        }
+        return true
+    }
+
     /// File > Get Info (explicit target — reliable from any focus state).
     @objc func showItemInfo(_ sender: Any?) {
         let controller = (NSApp.keyWindow ?? NSApp.mainWindow)?.windowController

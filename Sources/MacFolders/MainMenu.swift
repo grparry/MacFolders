@@ -77,9 +77,10 @@ enum MainMenu {
         viewMenu.addItem(.separator())
         let hidden = viewMenu.addItem(
             withTitle: "Show Hidden Files",
-            action: #selector(ContentViewController.toggleHiddenFiles(_:)),
+            action: #selector(AppDelegate.toggleHiddenFiles(_:)),
             keyEquivalent: ".")
         hidden.keyEquivalentModifierMask = [.command, .shift]
+        hidden.target = AppDelegate.shared
         viewItem.submenu = viewMenu
 
         // Go
