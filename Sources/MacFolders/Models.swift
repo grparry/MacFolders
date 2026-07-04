@@ -7,8 +7,10 @@ enum ViewMode: String, Codable {
 struct TabState: Codable, Equatable {
     var path: String
     var viewMode: ViewMode
-    // Optional: absent in state saved before the field existed (decodes nil).
+    // Optionals: absent in state saved before each field existed (decode nil).
     var sidebarWidth: CGFloat?
+    var expandedPaths: [String]?
+    var scrollOffset: CGFloat?
 }
 
 struct WindowState: Codable, Equatable {
