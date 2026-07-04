@@ -1,6 +1,15 @@
 import AppKit
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+
+    /// File > Open With: rebuilt from the key window's selection each open.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu.title == "Open With" else { return }
+        let controller = (NSApp.keyWindow ?? NSApp.mainWindow)?.windowController
+            as? BrowserWindowController
+        menu.removeAllItems()
+        controller?.contentVC.populateOpenWithMenu(menu)
+    }
     static private(set) var shared: AppDelegate!
     private(set) var controllers: [BrowserWindowController] = []
     private(set) var workspaceManager: WorkspaceManager!
