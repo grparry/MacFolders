@@ -86,6 +86,19 @@ final class WorkspaceManagerTests: XCTestCase {
         XCTAssertEqual(manager.state.workspaces.last!.name, "Default 2 2")
     }
 
+    func testFavoritesExcludedFromRecentFolders() throws {
+        let manager = try WorkspaceManager(store: store)
+        let id = manager.state.activeWorkspaceID
+        try manager.addFavorite(path: "/Applications", in: id)
+        try manager.noteRecentFolder(path: "/Applications", in: id)
+        XCTAssertEqual(manager.state.workspaces[0].recentFolders, [])
+        try manager.noteRecentFolder(path: "/Users", in: id)
+        XCTAssertEqual(manager.state.workspaces[0].recentFolders, ["/Users"])
+        // Favoriting a folder already in recents removes it from recents.
+        try manager.addFavorite(path: "/Users", in: id)
+        XCTAssertEqual(manager.state.workspaces[0].recentFolders, [])
+    }
+
     func testRenameWorkspace() throws {
         let manager = try WorkspaceManager(store: store)
         try manager.renameActiveWorkspace(to: "Renamed")

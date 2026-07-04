@@ -299,6 +299,8 @@ final class WorkspaceManager {
         try mutateWorkspace(id) { workspace in
             let count = workspace.favorites.count
             workspace.favorites.insert(path, at: min(max(index, 0), count))
+            // Newly favorited folders leave Recent Folders (see noteRecentFolder).
+            workspace.recentFolders.removeAll { $0 == path }
         }
     }
 
@@ -378,6 +380,9 @@ final class WorkspaceManager {
     }
 
     func noteRecentFolder(path: String, in id: UUID) throws {
+        // Favorites never appear in Recent Folders — they're already one
+        // click away in the sidebar.
+        guard workspace(id: id)?.favorites.contains(path) != true else { return }
         try mutateWorkspace(id) { workspace in
             workspace.recentFolders.removeAll { $0 == path }
             workspace.recentFolders.insert(path, at: 0)
