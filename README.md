@@ -28,10 +28,22 @@ MacFolders makes the window itself the unit of persistence.
   (including drops on sidebar folders), copy/paste, **cut/paste that moves**
   (the famous Finder omission), rename in place, duplicate, trash, New Folder
   targeted at the column you clicked.
+- **iCloud Drive, properly** — sidebar section; undownloaded (dataless)
+  files shown with accurate In iCloud / Downloaded status and Finder's cloud
+  glyphs; open-to-download; Download Now, Remove Download, and Keep
+  Downloaded (the same pin Finder sets) in the context menu.
+- **List-view columns like Finder's** — Date Modified/Created/Last
+  Opened/Added, Size, Kind, iCloud Status, Tags, Comments — right-click the
+  header to choose which show, persisted.
+- **Locations that do things** — volumes with eject buttons (drives, disk
+  images, network mounts), SMB servers discovered over Bonjour with
+  click-to-connect, and Trash with **Empty Trash and a real confirmation**
+  that counts items across the home, iCloud, and per-volume trashes.
 - **Get Info** — kind/size/where/dates, Quick Look preview, symlink targets,
   and *editable* permissions.
 - **Navigation** — back/forward history, Cmd+↑, Go menu, a toolbar path
-  dropdown for walking up the tree, and in-app symlink following.
+  dropdown for walking up the tree, in-app symlink following, and a global
+  persistent hidden-files toggle (Cmd+Shift+.).
 - Vanished-folder cleanup (tabs recover to the nearest surviving ancestor),
   dead sidebar entries auto-prune, Dock menu workspace launcher.
 
@@ -62,6 +74,12 @@ manager pleasant (no per-folder grant ceremony beyond the standard macOS
 privacy prompts). It touches only what you navigate to, and its state lives
 in `~/Library/Application Support/MacFolders/workspaces.json`. Read the
 source; it's small.
+
+Trash features need **Full Disk Access** (System Settings → Privacy &
+Security) — macOS offers no per-folder prompt for `~/.Trash`. Everything
+else works without it. One non-public mechanism, disclosed: Keep Downloaded
+writes the same `com.apple.fileprovider.pinned#P` xattr Finder's own Keep
+Downloaded writes; there is no public API for iCloud pinning.
 
 ## Status
 
