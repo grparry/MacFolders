@@ -1,6 +1,12 @@
 import Foundation
 import UniformTypeIdentifiers
 
+enum CloudStatus: Equatable {
+    case notCloud       // ordinary local file
+    case inCloudOnly    // iCloud file not downloaded (a ".name.icloud" placeholder)
+    case downloaded     // iCloud file resident on disk
+}
+
 struct FileItem: Equatable {
     let url: URL
     let name: String
@@ -8,9 +14,9 @@ struct FileItem: Equatable {
     let size: Int64
     let dateModified: Date
     let kind: String
-    /// An iCloud file not downloaded locally (url points at the ".…​.icloud"
-    /// placeholder; name is the real file's name).
-    var isCloudPlaceholder = false
+    var cloudStatus = CloudStatus.notCloud
+    /// url points at the ".name.icloud" placeholder; name is the real file's.
+    var isCloudPlaceholder: Bool { cloudStatus == .inCloudOnly }
 }
 
 enum SortKey: String, Codable {
@@ -61,11 +67,15 @@ final class DirectoryModel {
                     dateModified: values.contentModificationDate ?? .distantPast,
                     kind: UTType(filenameExtension: ext)?.localizedDescription
                         ?? "Document",
-                    isCloudPlaceholder: true))
+                    cloudStatus: .inCloudOnly))
                 continue
             }
             if !showHidden, values.isHidden == true { continue }
             let isDirectory = values.isDirectory ?? false
+            // Only iCloud locations pay for the per-item ubiquity check.
+            let cloudStatus: CloudStatus = CloudFiles.isInICloudContainer(url)
+                && FileManager.default.isUbiquitousItem(at: url)
+                ? .downloaded : .notCloud
             loaded.append(FileItem(
                 url: url,
                 name: url.lastPathComponent,
@@ -73,7 +83,8 @@ final class DirectoryModel {
                 size: Int64(values.fileSize ?? 0),
                 dateModified: values.contentModificationDate ?? .distantPast,
                 kind: values.contentType?.localizedDescription
-                    ?? (isDirectory ? "Folder" : "Document")))
+                    ?? (isDirectory ? "Folder" : "Document"),
+                cloudStatus: cloudStatus))
         }
         return sorted(loaded)
     }
