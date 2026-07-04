@@ -36,6 +36,9 @@ final class SidebarViewController: NSViewController,
         SidebarDefaults.favoritePaths().map(URL.init(fileURLWithPath:))
     }
 
+    static let trashURL = FileManager.default.urls(
+        for: .trashDirectory, in: .userDomainMask)[0]
+
     /// The workspace of the window this sidebar lives in.
     private var windowWorkspaceID: UUID {
         AppDelegate.shared.workspaceID(for: view.window)
@@ -140,6 +143,7 @@ final class SidebarViewController: NSViewController,
         entries += NetworkBrowser.shared.servers
             .filter { !mountedNames.contains($0) }
             .map(Entry.server)
+        entries += [.location(Self.trashURL)]
         if let icloud = CloudFiles.iCloudDriveURL() {
             entries += [.group("iCloud"), .location(icloud)]
         }
@@ -393,16 +397,25 @@ final class SidebarViewController: NSViewController,
         case .location(let url):
             let cell = NSTableCellView()
             let isICloudDrive = url == CloudFiles.iCloudDriveURL()
+            let isTrash = url == Self.trashURL
             let values = try? url.resourceValues(forKeys: [.isVolumeKey, .volumeNameKey])
             let name = isICloudDrive ? "iCloud Drive"
+                : isTrash ? "Trash"
                 : (values?.isVolume == true ? values?.volumeName : nil)
                 ?? url.lastPathComponent
             let text = NSTextField(labelWithString: name.isEmpty ? url.path : name)
             text.lineBreakMode = .byTruncatingMiddle
             let image = NSImageView()
+            let trashHasItems = isTrash
+                && !((try? FileManager.default.contentsOfDirectory(
+                    at: url, includingPropertiesForKeys: nil)) ?? []).isEmpty
             let icon = isICloudDrive
                 ? (NSImage(systemSymbolName: "icloud",
                            accessibilityDescription: "iCloud Drive")
+                    ?? NSWorkspace.shared.icon(forFile: url.path))
+                : isTrash
+                ? (NSImage(named: trashHasItems
+                    ? NSImage.trashFullName : NSImage.trashEmptyName)
                     ?? NSWorkspace.shared.icon(forFile: url.path))
                 : NSWorkspace.shared.icon(forFile: url.path)
             icon.size = NSSize(width: 16, height: 16)
