@@ -67,6 +67,10 @@ enum MainMenu {
                          action: #selector(ContentViewController.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "Select All",
                          action: #selector(NSResponder.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Find",
+                         action: #selector(BrowserWindowController.performFind(_:)),
+                         keyEquivalent: "f")
         editItem.submenu = editMenu
 
         // View

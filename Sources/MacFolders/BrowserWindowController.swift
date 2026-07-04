@@ -4,6 +4,7 @@ extension NSToolbarItem.Identifier {
     static let navigation = NSToolbarItem.Identifier("Navigation")
     static let pathMenu = NSToolbarItem.Identifier("PathMenu")
     static let viewMode = NSToolbarItem.Identifier("ViewMode")
+    static let searchField = NSToolbarItem.Identifier("SearchField")
 }
 
 final class BrowserWindowController: NSWindowController, NSWindowDelegate {
@@ -19,6 +20,8 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     private var forwardHistory: [URL] = []
     private var viewModeControl: NSSegmentedControl?
     private let pathMenu = NSMenu()
+    private var searchItem: NSSearchToolbarItem?
+    private var pendingSearch: DispatchWorkItem?
 
     init(url: URL, viewMode: ViewMode, workspaceID: UUID) {
         self.workspaceID = workspaceID
@@ -56,6 +59,9 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         sidebarVC.onOpenInNewTab = { [weak self] url in self?.openNewTab(at: url) }
         contentVC.onOpen = { [weak self] url in self?.open(url) }
         contentVC.onOpenInNewTab = { [weak self] url in self?.openNewTab(at: url) }
+        contentVC.onSearchExited = { [weak self] in
+            self?.searchItem?.searchField.stringValue = ""
+        }
         contentVC.onDirectoryVanished = { [weak self] in
             guard let self else { return }
             // Land on the closest surviving ancestor, like Finder.
@@ -68,6 +74,11 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     // MARK: Navigation
 
     func navigate(to url: URL, recordHistory: Bool = true) {
+        // Navigating anywhere ends an in-progress search.
+        if contentVC.isSearching {
+            contentVC.exitSearch()
+            searchItem?.searchField.stringValue = ""
+        }
         // Stale destinations (dead recents, restored tabs whose folder moved)
         // resolve to the nearest surviving ancestor instead of erroring.
         let url = FileManager.default.fileExists(atPath: url.path)
@@ -268,7 +279,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
 
 extension BrowserWindowController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.navigation, .flexibleSpace, .pathMenu, .viewMode]
+        [.navigation, .flexibleSpace, .pathMenu, .viewMode, .searchField]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -288,6 +299,13 @@ extension BrowserWindowController: NSToolbarDelegate {
             let item = NSToolbarItem(itemIdentifier: id)
             item.view = control
             item.label = "Back/Forward"
+            return item
+        case .searchField:
+            let item = NSSearchToolbarItem(itemIdentifier: id)
+            item.searchField.delegate = self
+            item.searchField.placeholderString = "Search"
+            item.resignsFirstResponderWithCancel = true
+            searchItem = item
             return item
         case .pathMenu:
             let item = NSMenuToolbarItem(itemIdentifier: id)
@@ -314,6 +332,28 @@ extension BrowserWindowController: NSToolbarDelegate {
         default:
             return nil
         }
+    }
+}
+
+extension BrowserWindowController: NSSearchFieldDelegate {
+    @objc func performFind(_ sender: Any?) {
+        searchItem?.beginSearchInteraction()
+    }
+
+    func controlTextDidChange(_ obj: Notification) {
+        guard (obj.object as? NSSearchField) === searchItem?.searchField else { return }
+        pendingSearch?.cancel()
+        let term = searchItem?.searchField.stringValue ?? ""
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            if term.isEmpty {
+                self.contentVC.exitSearch()
+            } else {
+                self.contentVC.showSearch(term: term)
+            }
+        }
+        pendingSearch = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 }
 
