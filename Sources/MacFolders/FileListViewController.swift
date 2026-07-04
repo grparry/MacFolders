@@ -58,10 +58,19 @@ final class FileListViewController: NSViewController, DirectoryView,
     static let columnDefinitions: [(String, String, CGFloat)] = [
         ("name", "Name", 320),
         ("dateModified", "Date Modified", 160),
+        ("dateCreated", "Date Created", 160),
+        ("dateLastOpened", "Date Last Opened", 160),
+        ("dateAdded", "Date Added", 160),
         ("size", "Size", 80),
         ("kind", "Kind", 140),
         ("cloudStatus", "iCloud Status", 110),
+        ("tags", "Tags", 120),
+        ("comments", "Comments", 160),
     ]
+
+    /// Hidden until chosen in the header menu, like Finder's defaults.
+    private static let defaultHiddenColumns: Set<String> =
+        ["dateCreated", "dateLastOpened", "dateAdded", "tags", "comments"]
 
     /// User choices from the header menu; a column absent here uses its
     /// default (visible — except iCloud Status, which auto-shows only in
@@ -81,7 +90,7 @@ final class FileListViewController: NSViewController, DirectoryView,
             } else if id == "cloudStatus" {
                 column.isHidden = !CloudFiles.isInICloudContainer(model.directoryURL)
             } else {
-                column.isHidden = false
+                column.isHidden = Self.defaultHiddenColumns.contains(id)
             }
         }
     }
@@ -163,7 +172,8 @@ final class FileListViewController: NSViewController, DirectoryView,
             let column = NSTableColumn(identifier: .init(id))
             column.title = title
             column.width = width
-            if id != "cloudStatus" {
+            // Comments load lazily per cell (Spotlight query) — not sortable.
+            if id != "cloudStatus", id != "comments" {
                 column.sortDescriptorPrototype = NSSortDescriptor(key: id, ascending: true)
             }
             outlineView.addTableColumn(column)
@@ -285,7 +295,7 @@ final class FileListViewController: NSViewController, DirectoryView,
             cell.textField?.stringValue = file.name
             cell.textField?.isEditable = true
             cell.textField?.delegate = self
-            cell.textField?.textColor = file.isCloudPlaceholder
+            cell.textField?.textColor = file.cloudStatus == .inCloudOnly
                 ? .secondaryLabelColor : .labelColor
             let icon = file.icon
             icon.size = NSSize(width: 16, height: 16)
@@ -295,6 +305,19 @@ final class FileListViewController: NSViewController, DirectoryView,
         case "size":
             cell.textField?.stringValue = file.isDirectory
                 ? "--" : Self.byteFormatter.string(fromByteCount: file.size)
+        case "dateCreated":
+            cell.textField?.stringValue = file.dateCreated == .distantPast
+                ? "--" : Self.dateFormatter.string(from: file.dateCreated)
+        case "dateLastOpened":
+            cell.textField?.stringValue = file.dateLastOpened == .distantPast
+                ? "--" : Self.dateFormatter.string(from: file.dateLastOpened)
+        case "dateAdded":
+            cell.textField?.stringValue = file.dateAdded == .distantPast
+                ? "--" : Self.dateFormatter.string(from: file.dateAdded)
+        case "tags":
+            cell.textField?.stringValue = file.tags.joined(separator: ", ")
+        case "comments":
+            cell.textField?.stringValue = FileMetadata.finderComment(for: file.url)
         case "cloudStatus":
             switch file.cloudStatus {
             case .notCloud: cell.textField?.stringValue = ""

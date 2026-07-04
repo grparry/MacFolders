@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 
 enum CloudStatus: Equatable {
     case notCloud       // ordinary local file
-    case inCloudOnly    // iCloud file not downloaded (a ".name.icloud" placeholder)
+    case inCloudOnly    // iCloud file not resident on disk
     case downloaded     // iCloud file resident on disk
 }
 
@@ -15,12 +15,20 @@ struct FileItem: Equatable {
     let dateModified: Date
     let kind: String
     var cloudStatus = CloudStatus.notCloud
-    /// url points at the ".name.icloud" placeholder; name is the real file's.
-    var isCloudPlaceholder: Bool { cloudStatus == .inCloudOnly }
+    /// Legacy ".name.icloud" placeholder: url points at the placeholder
+    /// plist, name is the real file's. Modern iCloud (File Provider) exposes
+    /// undownloaded files as real-named dataless items instead — those have
+    /// cloudStatus .inCloudOnly with a normal url.
+    var isLegacyCloudPlaceholder = false
+    var dateCreated = Date.distantPast
+    var dateLastOpened = Date.distantPast
+    var dateAdded = Date.distantPast
+    var tags: [String] = []
 }
 
 enum SortKey: String, Codable {
     case name, dateModified, size, kind
+    case dateCreated, dateLastOpened, dateAdded, tags
 }
 
 final class DirectoryModel {
@@ -47,7 +55,10 @@ final class DirectoryModel {
     func items(of url: URL) throws -> [FileItem] {
         let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey,
                                       .contentModificationDateKey, .contentTypeKey,
-                                      .isHiddenKey]
+                                      .isHiddenKey, .creationDateKey,
+                                      .contentAccessDateKey, .addedToDirectoryDateKey,
+                                      .tagNamesKey, .isUbiquitousItemKey,
+                                      .ubiquitousItemDownloadingStatusKey]
         // Hidden files are filtered manually (not via .skipsHiddenFiles)
         // because undownloaded iCloud files are hidden ".name.icloud"
         // placeholders that must surface as visible entries.
@@ -67,15 +78,24 @@ final class DirectoryModel {
                     dateModified: values.contentModificationDate ?? .distantPast,
                     kind: UTType(filenameExtension: ext)?.localizedDescription
                         ?? "Document",
-                    cloudStatus: .inCloudOnly))
+                    cloudStatus: .inCloudOnly,
+                    isLegacyCloudPlaceholder: true,
+                    dateCreated: values.creationDate ?? .distantPast,
+                    dateAdded: values.addedToDirectoryDate ?? .distantPast))
                 continue
             }
             if !showHidden, values.isHidden == true { continue }
             let isDirectory = values.isDirectory ?? false
-            // Only iCloud locations pay for the per-item ubiquity check.
-            let cloudStatus: CloudStatus = CloudFiles.isInICloudContainer(url)
-                && FileManager.default.isUbiquitousItem(at: url)
-                ? .downloaded : .notCloud
+            // Modern iCloud (File Provider) exposes undownloaded files as
+            // real-named dataless items; the downloading-status key is the
+            // accurate resident-or-not signal.
+            let cloudStatus: CloudStatus
+            if values.isUbiquitousItem == true {
+                cloudStatus = values.ubiquitousItemDownloadingStatus == .notDownloaded
+                    ? .inCloudOnly : .downloaded
+            } else {
+                cloudStatus = .notCloud
+            }
             loaded.append(FileItem(
                 url: url,
                 name: url.lastPathComponent,
@@ -84,7 +104,11 @@ final class DirectoryModel {
                 dateModified: values.contentModificationDate ?? .distantPast,
                 kind: values.contentType?.localizedDescription
                     ?? (isDirectory ? "Folder" : "Document"),
-                cloudStatus: cloudStatus))
+                cloudStatus: cloudStatus,
+                dateCreated: values.creationDate ?? .distantPast,
+                dateLastOpened: values.contentAccessDate ?? .distantPast,
+                dateAdded: values.addedToDirectoryDate ?? .distantPast,
+                tags: values.tagNames ?? []))
         }
         return sorted(loaded)
     }
@@ -103,6 +127,17 @@ final class DirectoryModel {
         case .kind:
             result = items.sorted {
                 $0.kind.localizedStandardCompare($1.kind) == .orderedAscending
+            }
+        case .dateCreated:
+            result = items.sorted { $0.dateCreated < $1.dateCreated }
+        case .dateLastOpened:
+            result = items.sorted { $0.dateLastOpened < $1.dateLastOpened }
+        case .dateAdded:
+            result = items.sorted { $0.dateAdded < $1.dateAdded }
+        case .tags:
+            result = items.sorted {
+                $0.tags.joined(separator: ",").localizedStandardCompare(
+                    $1.tags.joined(separator: ",")) == .orderedAscending
             }
         }
         return ascending ? result : result.reversed()

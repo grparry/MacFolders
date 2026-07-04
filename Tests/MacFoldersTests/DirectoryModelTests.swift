@@ -127,11 +127,14 @@ extension DirectoryModelTests {
         try model.reload()
         XCTAssertEqual(model.items.map(\.name), ["Report.pdf", "visible.txt"])
         let placeholder = model.items[0]
-        XCTAssertTrue(placeholder.isCloudPlaceholder)
+        XCTAssertTrue(placeholder.isLegacyCloudPlaceholder)
         XCTAssertEqual(placeholder.cloudStatus, .inCloudOnly)
         XCTAssertEqual(placeholder.size, 12345)
-        XCTAssertFalse(model.items[1].isCloudPlaceholder)
+        XCTAssertFalse(model.items[1].isLegacyCloudPlaceholder)
         XCTAssertEqual(model.items[1].cloudStatus, .notCloud)
+        // Metadata columns populate for regular files.
+        XCTAssertNotEqual(model.items[1].dateCreated, .distantPast)
+        XCTAssertNotEqual(model.items[1].dateAdded, .distantPast)
 
         // Placeholders present as their materialized name even when hidden
         // files are shown — one consistent representation.

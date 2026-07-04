@@ -116,7 +116,7 @@ final class ContentViewController: NSViewController {
 
     @objc func downloadFromCloud(_ sender: Any?) {
         do {
-            for url in actionTargets where CloudFiles.isPlaceholder(url) {
+            for url in actionTargets where CloudFiles.needsDownload(url) {
                 try CloudFiles.startDownload(itemAt: url)
             }
         } catch { NSAlert(error: error).runModal() }
@@ -299,7 +299,7 @@ extension ContentViewController: NSMenuDelegate {
             openWith.isEnabled = selection.count == 1
             menu.addItem(openWith)
             menu.addItem(.separator())
-            if selection.contains(where: CloudFiles.isPlaceholder) {
+            if selection.contains(where: CloudFiles.needsDownload) {
                 menu.addItem(withTitle: "Download Now",
                              action: #selector(downloadFromCloud(_:)),
                              keyEquivalent: "").target = self
