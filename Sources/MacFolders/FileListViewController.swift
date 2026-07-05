@@ -122,6 +122,17 @@ final class FileListViewController: NSViewController, DirectoryView,
         expandedURLs().map(\.path)
     }
 
+    func applySelection(_ urls: Set<URL>) {
+        var restore = IndexSet()
+        for row in 0..<outlineView.numberOfRows {
+            if let node = outlineView.item(atRow: row) as? ListNode,
+               urls.contains(node.item.url) {
+                restore.insert(row)
+            }
+        }
+        outlineView.selectRowIndexes(restore, byExtendingSelection: false)
+    }
+
     func applyPersistedExpansion(_ paths: [String]) {
         restoreExpansion(Set(paths.map(URL.init(fileURLWithPath:))))
         syncExpandedWatchers()

@@ -11,6 +11,7 @@ struct TabState: Codable, Equatable {
     var sidebarWidth: CGFloat?
     var expandedPaths: [String]?
     var scrollOffset: CGFloat?
+    var selectedPaths: [String]?
 }
 
 struct WindowState: Codable, Equatable {

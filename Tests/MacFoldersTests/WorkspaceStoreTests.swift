@@ -96,12 +96,14 @@ final class WorkspaceStoreTests: XCTestCase {
             frame: .init(x: 0, y: 0, width: 800, height: 600),
             tabs: [TabState(path: "/tmp", viewMode: .list, sidebarWidth: 180,
                             expandedPaths: ["/tmp/a", "/tmp/a/b"],
-                            scrollOffset: 42.5)],
+                            scrollOffset: 42.5,
+                            selectedPaths: ["/tmp/a/b/c.txt"])],
             selectedTab: 0)]
         try store.save(state)
         let loaded = try XCTUnwrap(store.load())
         let tab = loaded.workspaces[0].live[0].tabs[0]
         XCTAssertEqual(tab.expandedPaths, ["/tmp/a", "/tmp/a/b"])
         XCTAssertEqual(tab.scrollOffset, 42.5)
+        XCTAssertEqual(tab.selectedPaths, ["/tmp/a/b/c.txt"])
     }
 }

@@ -13,6 +13,13 @@ protocol DirectoryView: NSViewController {
     /// Scroll position captured into / restored from workspace state.
     /// Vertical for list and icon views; horizontal for columns.
     var persistedScrollOffset: CGFloat { get set }
+    /// Re-select these items on restore. Views that can't (columns, where
+    /// selection IS the navigation chain) use the no-op default.
+    func applySelection(_ urls: Set<URL>)
+}
+
+extension DirectoryView {
+    func applySelection(_ urls: Set<URL>) {}
 }
 
 extension DirectoryView {

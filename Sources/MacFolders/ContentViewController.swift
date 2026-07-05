@@ -77,10 +77,19 @@ final class ContentViewController: NSViewController {
         currentDirectoryView?.persistedScrollOffset
     }
 
-    func restorePersistedViewState(expandedPaths: [String]?, scrollOffset: CGFloat?) {
+    var persistedSelectedPaths: [String]? {
+        currentDirectoryView?.selectedURLs.map(\.path)
+    }
+
+    func restorePersistedViewState(expandedPaths: [String]?, scrollOffset: CGFloat?,
+                                   selectedPaths: [String]?) {
         if let expandedPaths, !expandedPaths.isEmpty,
            let list = currentDirectoryView as? FileListViewController {
             list.applyPersistedExpansion(expandedPaths)
+        }
+        if let selectedPaths, !selectedPaths.isEmpty {
+            currentDirectoryView?.applySelection(
+                Set(selectedPaths.map(URL.init(fileURLWithPath:))))
         }
         if let scrollOffset {
             currentDirectoryView?.persistedScrollOffset = scrollOffset

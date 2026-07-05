@@ -87,6 +87,13 @@ final class IconViewController: NSViewController, DirectoryView,
         }
     }
 
+    func applySelection(_ urls: Set<URL>) {
+        let paths = Set(model.items.indices
+            .filter { urls.contains(model.items[$0].url) }
+            .map { IndexPath(item: $0, section: 0) })
+        collectionView.selectionIndexPaths = paths
+    }
+
     func modelDidChange() {
         let selected = Set(selectedURLs)
         collectionView.reloadData()
