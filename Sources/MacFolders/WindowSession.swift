@@ -37,7 +37,8 @@ final class WindowSession {
                     TabState(path: $0.currentURL.path, viewMode: $0.contentVC.viewMode,
                              sidebarWidth: $0.sidebarWidth,
                              expandedPaths: $0.contentVC.persistedExpandedPaths,
-                             scrollOffset: $0.contentVC.persistedScrollOffset)
+                             scrollOffset: $0.contentVC.persistedScrollOffset,
+                             selectedPaths: $0.contentVC.persistedSelectedPaths)
                 }
                 let selected = group.windows.firstIndex { $0 === group.selectedWindow } ?? 0
                 result.append(WindowState(frame: group.windows[0].frame,
@@ -49,7 +50,8 @@ final class WindowSession {
                                     viewMode: controller.contentVC.viewMode,
                                     sidebarWidth: controller.sidebarWidth,
                                     expandedPaths: controller.contentVC.persistedExpandedPaths,
-                                    scrollOffset: controller.contentVC.persistedScrollOffset)],
+                                    scrollOffset: controller.contentVC.persistedScrollOffset,
+                                    selectedPaths: controller.contentVC.persistedSelectedPaths)],
                     selectedTab: 0))
             }
         }
@@ -117,7 +119,8 @@ final class WindowSession {
                     controller.applySidebarWidth(width)
                 }
                 controller.contentVC.restorePersistedViewState(
-                    expandedPaths: tab.expandedPaths, scrollOffset: tab.scrollOffset)
+                    expandedPaths: tab.expandedPaths, scrollOffset: tab.scrollOffset,
+                    selectedPaths: tab.selectedPaths)
                 anchor = controller
             }
             if let group = anchor?.window?.tabGroup,
