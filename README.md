@@ -54,6 +54,8 @@ MacFolders makes the window itself the unit of persistence.
 - Vanished-folder cleanup (tabs recover to the nearest surviving ancestor),
   dead sidebar entries auto-prune, Dock menu workspace launcher.
 
+The complete feature reference lives in [docs/manual.md](docs/manual.md).
+
 ## Install
 
 ```

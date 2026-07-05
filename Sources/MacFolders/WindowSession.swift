@@ -65,14 +65,27 @@ final class WindowSession {
     }
 
     /// Bring an already-open workspace's windows forward. False if none.
+    /// Fronts one window per tab GROUP — ordering front a non-selected tab
+    /// would switch the group's selection to it.
     func bringToFront(workspaceID: UUID) -> Bool {
         let list = controllers(for: workspaceID)
         guard !list.isEmpty else { return false }
+        var seenGroups: [NSWindowTabGroup] = []
+        var frontTargets: [NSWindow] = []
         for controller in list {
-            controller.window?.orderFront(nil)
+            guard let window = controller.window else { continue }
+            if let group = window.tabGroup {
+                guard !seenGroups.contains(where: { $0 === group }) else { continue }
+                seenGroups.append(group)
+                frontTargets.append(group.selectedWindow ?? window)
+            } else {
+                frontTargets.append(window)
+            }
         }
-        (list.first?.window?.tabGroup?.selectedWindow ?? list.first?.window)?
-            .makeKeyAndOrderFront(nil)
+        for window in frontTargets {
+            window.orderFront(nil)
+        }
+        frontTargets.first?.makeKeyAndOrderFront(nil)
         return true
     }
 
