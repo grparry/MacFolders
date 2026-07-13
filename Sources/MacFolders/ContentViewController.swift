@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 final class ContentViewController: NSViewController {
     private(set) var model: DirectoryModel
@@ -290,8 +291,10 @@ final class ContentViewController: NSViewController {
         submenu.addItem(other)
     }
 
-    /// Any-app picker with Finder's "Always Open With" option (a per-file
-    /// LaunchServices binding, not a type-wide default).
+    /// Any-app picker with an explicit three-way choice: open once, always
+    /// for the selected file(s) (a per-file LaunchServices binding), or —
+    /// the Windows Explorer behavior — always for ALL files of the type
+    /// (the system-wide default handler).
     @objc func openWithOther(_ sender: Any?) {
         let targets = actionTargets
         guard !targets.isEmpty else { return }
@@ -300,11 +303,37 @@ final class ContentViewController: NSViewController {
         panel.allowedContentTypes = [.application]
         panel.allowsMultipleSelection = false
         panel.prompt = "Open"
-        let always = NSButton(checkboxWithTitle: "Always Open With", target: nil, action: nil)
-        panel.accessoryView = always
+
+        let once = NSButton(radioButtonWithTitle: "Open once",
+                            target: self, action: #selector(alwaysChoiceChanged(_:)))
+        let thisFile = NSButton(
+            radioButtonWithTitle: targets.count == 1
+                ? "Always for this file" : "Always for these files",
+            target: self, action: #selector(alwaysChoiceChanged(_:)))
+        let extensions = Set(targets.map { $0.pathExtension.lowercased() })
+            .filter { !$0.isEmpty }
+        let allOfType = NSButton(
+            radioButtonWithTitle: extensions.count == 1
+                ? "Always for all “.\(extensions.first!)” files"
+                : "Always for all files of these types",
+            target: self, action: #selector(alwaysChoiceChanged(_:)))
+        // Type-wide defaults make no sense for folders or extensionless files.
+        let hasDirectory = targets.contains {
+            (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+        }
+        allOfType.isEnabled = !hasDirectory && !extensions.isEmpty
+        once.state = .on
+        let stack = NSStackView(views: [once, thisFile, allOfType])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 4
+        stack.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+        stack.frame = NSRect(x: 0, y: 0, width: 340, height: 84)
+        panel.accessoryView = stack
         panel.isAccessoryViewDisclosed = true
+
         guard panel.runModal() == .OK, let appURL = panel.url else { return }
-        if always.state == .on {
+        if thisFile.state == .on {
             Task { @MainActor in
                 do {
                     for url in targets {
@@ -315,9 +344,31 @@ final class ContentViewController: NSViewController {
                     NSAlert(error: error).runModal()
                 }
             }
+        } else if allOfType.state == .on {
+            Task { @MainActor in
+                do {
+                    var types = Set<UTType>()
+                    for url in targets {
+                        if let type = (try? url.resourceValues(
+                            forKeys: [.contentTypeKey]))?.contentType {
+                            types.insert(type)
+                        }
+                    }
+                    for type in types {
+                        try await NSWorkspace.shared.setDefaultApplication(
+                            at: appURL, toOpen: type)
+                    }
+                } catch {
+                    NSAlert(error: error).runModal()
+                }
+            }
         }
         openTargets(targets, withApplicationAt: appURL)
     }
+
+    /// Radio-group plumbing: a shared action is what makes NSButton radios
+    /// mutually exclusive within their container.
+    @objc private func alwaysChoiceChanged(_ sender: NSButton) {}
 
     @objc func openWithApp(_ sender: NSMenuItem) {
         guard let appURL = sender.representedObject as? URL else { return }
