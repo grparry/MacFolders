@@ -106,7 +106,7 @@ final class FlatViewController: NSViewController, DirectoryView,
 
         for (id, title, width, sortable) in [
             ("name", "Name", CGFloat(260), true),
-            ("where", "Where", 300, false),
+            ("where", "Where", 300, true),
             ("size", "Size", 90, true),
             ("dateModified", "Date Modified", 160, true),
         ] {
@@ -214,6 +214,23 @@ final class FlatViewController: NSViewController, DirectoryView,
             + FlatScanner.skipPatterns.joined(separator: ", ")
     }
 
+    /// Right-click → skip this folder name everywhere. Adding implies
+    /// wanting it applied, so the folder's toggle switches on too.
+    func addToSkipList(_ name: String) {
+        var patterns = FlatScanner.skipPatterns
+        if !patterns.contains(name) {
+            patterns.append(name)
+            FlatScanner.skipPatterns = patterns
+        }
+        if !config.skipDotTrees {
+            config.skipDotTrees = true
+            dotTreesChip.state = .on
+            persistConfig()
+        }
+        updateSkipTooltip()
+        rescan()
+    }
+
     @objc private func chipsChanged() {
         config.skipDotTrees = dotTreesChip.state == .on
         config.minSizeBytes = Self.minSizeChoices[minSizePopup.indexOfSelectedItem].1
@@ -276,6 +293,16 @@ final class FlatViewController: NSViewController, DirectoryView,
             results.sort { $0.size < $1.size }
         case .dateModified:
             results.sort { $0.dateModified < $1.dateModified }
+        case .location:
+            // Groups files by containing folder, walking the tree in order.
+            results.sort {
+                let a = $0.url.deletingLastPathComponent().path
+                let b = $1.url.deletingLastPathComponent().path
+                if a == b {
+                    return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                }
+                return a.localizedStandardCompare(b) == .orderedAscending
+            }
         default:
             results.sort { $0.size < $1.size }
         }

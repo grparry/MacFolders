@@ -29,6 +29,7 @@ struct FileItem: Equatable {
 enum SortKey: String, Codable {
     case name, dateModified, size, kind
     case dateCreated, dateLastOpened, dateAdded, tags
+    case location = "where"   // flat view's Where column
 }
 
 final class DirectoryModel {
@@ -139,6 +140,9 @@ final class DirectoryModel {
                 $0.tags.joined(separator: ",").localizedStandardCompare(
                     $1.tags.joined(separator: ",")) == .orderedAscending
             }
+        case .location:
+            // Single-directory listings share one location; stable no-op sort.
+            result = items
         }
         return ascending ? result : result.reversed()
     }

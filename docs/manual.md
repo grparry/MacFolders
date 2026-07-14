@@ -58,8 +58,12 @@ by that column) shows *every file* under the folder as one sortable table —
 "the biggest file anywhere in here" is one header click. A Where column
 shows each file's location relative to the root; double-click it (or use
 Show in Enclosing Folder) to land in list view at that folder with the file
-selected. Header chips filter: skip `.git`/`node_modules`/hidden trees
-(default on), minimum size, modified-within. **Each folder remembers its
+selected. Header chips filter: a user-editable skip list (Edit List… — glob
+patterns, seeded with `.*` and `node_modules`; the per-folder toggle
+decides whether it applies), minimum size, and modified-within.
+Right-clicking a result offers "Skip Folders Named …" to add its parent
+to the list in place. All columns sort, including Where (groups files
+by containing folder). **Each folder remembers its
 own flat configuration** — sort and filters persist per folder, with no
 save step, and never inherit between folders. Scans stream in live and
 pause at a threshold (50,000 files) with the real count and a
