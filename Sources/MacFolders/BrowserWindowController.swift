@@ -340,9 +340,9 @@ extension BrowserWindowController: NSToolbarDelegate {
         case .viewMode:
             let control = NSSegmentedControl(
                 images: [NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Icons")!,
-                         NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "List")!,
+                         NSImage(systemSymbolName: "list.bullet.indent", accessibilityDescription: "List")!,
                          NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: "Columns")!,
-                         NSImage(systemSymbolName: "list.bullet.indent", accessibilityDescription: "Flat")!],
+                         NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Flat")!],
                 trackingMode: .selectOne, target: self, action: #selector(viewModeClicked(_:)))
             control.selectedSegment = [ViewMode.icon, .list, .column, .flat]
                 .firstIndex(of: contentVC.viewMode) ?? 1
