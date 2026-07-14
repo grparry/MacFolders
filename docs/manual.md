@@ -39,7 +39,7 @@ own sidebar favorites and recent items. The window title reads
 
 ## Views
 
-Icon, list, and column (Miller) views — Cmd+1/2/3. Every view live-updates
+Icon, list, column (Miller), and flat views — Cmd+1/2/3/4. Every view live-updates
 as directories change on disk. Switching views and returning preserves
 selection, scroll, expanded folders, and open columns.
 
@@ -51,6 +51,20 @@ part of workspace persistence.
 
 **Column view** supports full drag & drop, New Folder in the clicked
 column, and per-column live updates.
+
+**Flat view** (Cmd+4, the fourth view segment, or right-click any folder →
+Open in Flat View; Option-click a list column header enters flat pre-sorted
+by that column) shows *every file* under the folder as one sortable table —
+"the biggest file anywhere in here" is one header click. A Where column
+shows each file's location relative to the root; double-click it (or use
+Show in Enclosing Folder) to land in list view at that folder with the file
+selected. Header chips filter: skip `.git`/`node_modules`/hidden trees
+(default on), minimum size, modified-within. **Each folder remembers its
+own flat configuration** — sort and filters persist per folder, with no
+save step, and never inherit between folders. Scans stream in live and
+pause at a threshold (50,000 files) with the real count and a
+Continue/Stop choice, instead of guessing costs up front. The subtree is
+watched recursively, so results stay live.
 
 ## Sidebar
 
@@ -152,7 +166,7 @@ multi-instance runs merge through a lock-protected read-merge-write.
 | Cmd+T | New tab |
 | Cmd+W | Close window/tab |
 | Cmd+F | Search |
-| Cmd+1 / 2 / 3 | Icon / List / Column view |
+| Cmd+1 / 2 / 3 / 4 | Icon / List / Column / Flat view |
 | Cmd+I | Get Info |
 | Cmd+C / X / V | Copy / Cut / Paste files |
 | Cmd+Option+C | Copy Pathname |

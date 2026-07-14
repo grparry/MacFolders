@@ -86,6 +86,9 @@ enum MainMenu {
         viewMenu.addItem(withTitle: "as Columns",
                          action: #selector(BrowserWindowController.viewAsColumns(_:)),
                          keyEquivalent: "3")
+        viewMenu.addItem(withTitle: "as Flat List",
+                         action: #selector(BrowserWindowController.viewAsFlat(_:)),
+                         keyEquivalent: "4")
         viewMenu.addItem(.separator())
         viewMenu.addItem(withTitle: "Show All Tabs",
                          action: #selector(NSWindow.toggleTabOverview(_:)), keyEquivalent: "")

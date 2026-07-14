@@ -1,7 +1,17 @@
 import Foundation
 
 enum ViewMode: String, Codable {
-    case icon, list, column
+    case icon, list, column, flat
+}
+
+/// Per-folder flat view configuration — each folder remembers exactly how
+/// it was last flattened; folders never inherit each other's settings.
+struct FlatViewConfig: Codable, Equatable {
+    var sortKey: SortKey = .size
+    var ascending = false
+    var skipDotTrees = true      // .git, node_modules & other dot-led trees
+    var minSizeBytes: Int64 = 0  // 0 = no minimum
+    var modifiedWithinDays = 0   // 0 = any time
 }
 
 struct TabState: Codable, Equatable {
@@ -37,4 +47,8 @@ struct AppState: Codable, Equatable {
     var activeWorkspaceID: UUID
     /// Workspaces with windows open; all of them restore at launch.
     var openWorkspaceIDs: [UUID] = []
+    /// Flat view settings keyed by folder path — app-level, since a folder's
+    /// flat view is a property of the folder, not of any workspace. Optional:
+    /// absent in older state files.
+    var flatViewConfigs: [String: FlatViewConfig]?
 }

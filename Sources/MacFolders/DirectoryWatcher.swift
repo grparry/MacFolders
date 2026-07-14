@@ -16,12 +16,16 @@ final class DirectoryWatcher {
     }
 
     let directoryURL: URL
+    /// Recursive watchers fire for changes anywhere below the directory
+    /// (flat view); non-recursive ones filter to direct children.
+    let recursive: Bool
     /// Fired on the main queue.
     var onChange: (() -> Void)?
     private var stream: FSEventStreamRef?
 
-    init(directoryURL: URL) {
+    init(directoryURL: URL, recursive: Bool = false) {
         self.directoryURL = directoryURL
+        self.recursive = recursive
     }
 
     deinit {
@@ -61,7 +65,7 @@ final class DirectoryWatcher {
     }
 
     private func handleEvents(paths: [String]) {
-        if isRelevant(paths: paths) { onChange?() }
+        if recursive || isRelevant(paths: paths) { onChange?() }
     }
 
     /// Internal for testability: FSEvents timing/coalescing can't be asserted

@@ -18,6 +18,7 @@ final class SidebarViewController: NSViewController,
 
     var onSelect: ((URL) -> Void)?
     var onOpenInNewTab: ((URL) -> Void)?
+    var onOpenInFlatView: ((URL) -> Void)?
     var favorites: [URL] = SidebarViewController.defaultFavorites() {
         didSet { rebuildEntries() }
     }
@@ -489,6 +490,12 @@ extension SidebarViewController: NSMenuDelegate {
             item.target = self
             item.representedObject = url
             menu.addItem(item)
+            let flatItem = NSMenuItem(title: "Open in Flat View",
+                                      action: #selector(openInFlatView(_:)),
+                                      keyEquivalent: "")
+            flatItem.target = self
+            flatItem.representedObject = url
+            menu.addItem(flatItem)
         }
         let infoItem = NSMenuItem(title: "Get Info",
                                   action: #selector(showItemInfo(_:)), keyEquivalent: "")
@@ -565,6 +572,11 @@ extension SidebarViewController: NSMenuDelegate {
     @objc private func openInNewTab(_ sender: NSMenuItem) {
         guard let url = sender.representedObject as? URL else { return }
         onOpenInNewTab?(url)
+    }
+
+    @objc private func openInFlatView(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        onOpenInFlatView?(url)
     }
 
     @objc private func showItemInfo(_ sender: NSMenuItem) {
