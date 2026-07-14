@@ -30,7 +30,7 @@ final class FlatViewController: NSViewController, DirectoryView,
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
     private let statusLabel = NSTextField(labelWithString: "")
-    private let dotTreesChip = NSButton(checkboxWithTitle: "Skip .git & node_modules",
+    private let dotTreesChip = NSButton(checkboxWithTitle: "Skip listed folders",
                                         target: nil, action: nil)
     private let minSizePopup = NSPopUpButton()
     private let modifiedPopup = NSPopUpButton()
@@ -76,7 +76,12 @@ final class FlatViewController: NSViewController, DirectoryView,
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.font = .systemFont(ofSize: 11)
 
-        let header = NSStackView(views: [dotTreesChip, minSizePopup, modifiedPopup,
+        let editSkipButton = NSButton(title: "Edit List…",
+                                      target: self, action: #selector(editSkipList))
+        editSkipButton.controlSize = .small
+        editSkipButton.bezelStyle = .rounded
+        let header = NSStackView(views: [dotTreesChip, editSkipButton,
+                                         minSizePopup, modifiedPopup,
                                          NSView(), statusLabel])
         header.orientation = .horizontal
         header.edgeInsets = NSEdgeInsets(top: 6, left: 10, bottom: 6, right: 10)
@@ -146,6 +151,7 @@ final class FlatViewController: NSViewController, DirectoryView,
         scanner.onEvent = { [weak self] event in
             self?.handle(event)
         }
+        updateSkipTooltip()
         configure(for: model.directoryURL)
     }
 
@@ -172,6 +178,40 @@ final class FlatViewController: NSViewController, DirectoryView,
         } catch {
             NSAlert(error: error).runModal()
         }
+    }
+
+    /// The skip list is app-wide (what "clutter" means doesn't vary by
+    /// folder); the per-folder toggle decides whether it applies here.
+    @objc private func editSkipList() {
+        let alert = NSAlert()
+        alert.messageText = "Skipped Folders"
+        alert.informativeText = "Flat view will not descend into folders "
+            + "matching these patterns (one per line). Globs supported — "
+            + "“.*” matches every dot-folder."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 300, height: 120))
+        let text = NSTextView(frame: scroll.bounds)
+        text.string = FlatScanner.skipPatterns.joined(separator: "\n")
+        text.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        text.autoresizingMask = [.width]
+        scroll.documentView = text
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        alert.accessoryView = scroll
+        alert.window.initialFirstResponder = text
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        FlatScanner.skipPatterns = text.string
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        updateSkipTooltip()
+        rescan()
+    }
+
+    private func updateSkipTooltip() {
+        dotTreesChip.toolTip = "Skipping: "
+            + FlatScanner.skipPatterns.joined(separator: ", ")
     }
 
     @objc private func chipsChanged() {

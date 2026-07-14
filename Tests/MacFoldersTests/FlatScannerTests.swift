@@ -66,6 +66,24 @@ final class FlatScannerTests: XCTestCase {
         XCTAssertEqual(scan(config), ["big.bin", "nested.txt", "small.txt"])
     }
 
+    func testSkipPatternMatching() {
+        let saved = UserDefaults.standard.stringArray(forKey: "flatSkipPatterns")
+        defer { UserDefaults.standard.set(saved, forKey: "flatSkipPatterns") }
+        UserDefaults.standard.removeObject(forKey: "flatSkipPatterns")
+        // Seeded defaults: every dot-directory plus node_modules.
+        XCTAssertTrue(FlatScanner.shouldSkip(directoryName: ".git"))
+        XCTAssertTrue(FlatScanner.shouldSkip(directoryName: ".venv"))
+        XCTAssertTrue(FlatScanner.shouldSkip(directoryName: "node_modules"))
+        XCTAssertFalse(FlatScanner.shouldSkip(directoryName: "Sources"))
+        XCTAssertFalse(FlatScanner.shouldSkip(directoryName: "node_modules_backup"))
+        // User globs.
+        FlatScanner.skipPatterns = ["build*", "dist"]
+        XCTAssertTrue(FlatScanner.shouldSkip(directoryName: "build"))
+        XCTAssertTrue(FlatScanner.shouldSkip(directoryName: "build-output"))
+        XCTAssertTrue(FlatScanner.shouldSkip(directoryName: "dist"))
+        XCTAssertFalse(FlatScanner.shouldSkip(directoryName: ".git"))
+    }
+
     func testFlatConfigRoundTripAndDefault() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".json")
