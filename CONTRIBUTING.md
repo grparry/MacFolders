@@ -40,3 +40,12 @@ The Xcode project is generated — edit `project.yml`, never the `.xcodeproj`.
 - `NSMenuToolbarItem` swallows its menu's first item.
 - FSEvents may coalesce events to an ancestor path; never assert on event
   timing, only on the path filter (`DirectoryWatcher.isRelevant`).
+- The native tab bar's context menu has no public extension point — tab
+  right-clicks are intercepted by an event monitor, and the clicked tab is
+  found by equal-width arithmetic (`AppDelegate.installTabBarMenuMonitor`).
+- Ordering front a non-selected tabbed window switches its group's
+  selection to it. Front one window per tab group (the group's selected
+  window), never every window.
+- Modern iCloud Drive exposes undownloaded files as real-named dataless
+  items, not ".name.icloud" placeholders; `isUbiquitousItem` alone reads
+  everything as downloaded — use `ubiquitousItemDownloadingStatus`.

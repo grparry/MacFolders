@@ -21,13 +21,20 @@ MacFolders makes the window itself the unit of persistence.
   in a new tab (context menu, Cmd+double-click, sidebar); drag tabs between
   windows — a tab dropped into another workspace joins it; tearing a tab out
   creates a new workspace; dragging a workspace's last tab away deletes it.
-- **Three Finder-style views** — icon, list (with expandable folders), and
-  Miller columns — with live directory updating in every view, view state
-  preserved across toggles, and per-tab sidebar widths.
+- **Four views** — icon, list (with expandable folders), Miller columns,
+  and **flat view**: every file under a folder as one sortable table — the
+  biggest or newest file *anywhere* in a tree is one header click away,
+  with a user-editable skip list for `.git`/`node_modules`-style clutter
+  and per-folder memory of how you left it. Live directory updating
+  everywhere, view state preserved across toggles.
+- **Everything restores** — windows, tabs, the active tab, view mode,
+  sidebar width, expanded folders, selection, and scroll position, per
+  workspace, on every relaunch.
 - **Real file management** — drag & drop with Finder semantics everywhere
   (including drops on sidebar folders), copy/paste, **cut/paste that moves**
   (the famous Finder omission), rename in place, duplicate, trash, New Folder
-  targeted at the column you clicked.
+  targeted at the column you clicked, and Open With that can set the
+  system-wide default app for a file type.
 - **Search that respects you** — Cmd+F searches the *current folder* by
   default, never your whole Mac (This Mac is one click, never the default),
   with an explicit Name / Contents switch instead of hidden token magic.
