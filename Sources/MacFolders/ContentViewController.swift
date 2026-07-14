@@ -265,6 +265,11 @@ final class ContentViewController: NSViewController {
         setViewMode(.flat)
     }
 
+    @objc func skipFolderNamed(_ sender: NSMenuItem) {
+        guard let name = sender.representedObject as? String else { return }
+        (currentDirectoryView as? FlatViewController)?.addToSkipList(name)
+    }
+
     @objc func revealSelectedInFolder(_ sender: Any?) {
         guard let url = actionTargets.first else { return }
         onRevealInFolder?(url)
@@ -573,6 +578,17 @@ extension ContentViewController: NSMenuDelegate {
                 menu.addItem(withTitle: "Show in Enclosing Folder",
                              action: #selector(revealSelectedInFolder(_:)),
                              keyEquivalent: "").target = self
+                if selection.count == 1, let url = selection.first {
+                    let parent = url.deletingLastPathComponent()
+                    if parent != model.directoryURL {
+                        let item = NSMenuItem(
+                            title: "Skip Folders Named “\(parent.lastPathComponent)”",
+                            action: #selector(skipFolderNamed(_:)), keyEquivalent: "")
+                        item.target = self
+                        item.representedObject = parent.lastPathComponent
+                        menu.addItem(item)
+                    }
+                }
             }
 
             let openWith = NSMenuItem(title: "Open With", action: nil, keyEquivalent: "")
