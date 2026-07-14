@@ -250,6 +250,20 @@ final class WorkspaceManager {
     /// unmounted volumes are kept — the volume may come back. Returns whether
     /// anything was removed.
     @discardableResult
+    // MARK: Flat view configs (per folder, app-level)
+
+    func flatConfig(forPath path: String) -> FlatViewConfig {
+        state.flatViewConfigs?[path] ?? FlatViewConfig()
+    }
+
+    func setFlatConfig(_ config: FlatViewConfig, forPath path: String) throws {
+        try mutate { state in
+            var configs = state.flatViewConfigs ?? [:]
+            configs[path] = config
+            state.flatViewConfigs = configs
+        }
+    }
+
     static func prune(_ state: inout AppState) -> Bool {
         var pruned = false
         for i in state.workspaces.indices {
@@ -263,6 +277,13 @@ final class WorkspaceManager {
                 + state.workspaces[i].recentFolders.count
                 + state.workspaces[i].recentDocuments.count
             pruned = pruned || after != before
+        }
+        if let configs = state.flatViewConfigs {
+            let kept = configs.filter { !Self.isPrunablyDead($0.key) }
+            if kept.count != configs.count {
+                state.flatViewConfigs = kept
+                pruned = true
+            }
         }
         return pruned
     }

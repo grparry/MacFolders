@@ -57,10 +57,25 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
             name: NSSplitView.didResizeSubviewsNotification, object: split.splitView)
         sidebarVC.onSelect = { [weak self] url in self?.open(url) }
         sidebarVC.onOpenInNewTab = { [weak self] url in self?.openNewTab(at: url) }
+        sidebarVC.onOpenInFlatView = { [weak self] url in
+            guard let self else { return }
+            self.navigate(to: url)
+            self.contentVC.setViewMode(.flat)
+            self.selectViewModeControl(.flat)
+            AppDelegate.shared.noteWindowStateChanged()
+        }
         contentVC.onOpen = { [weak self] url in self?.open(url) }
         contentVC.onOpenInNewTab = { [weak self] url in self?.openNewTab(at: url) }
         contentVC.onSearchExited = { [weak self] in
             self?.searchItem?.searchField.stringValue = ""
+        }
+        contentVC.onRevealInFolder = { [weak self] url in
+            guard let self else { return }
+            self.contentVC.setViewMode(.list)
+            self.selectViewModeControl(.list)
+            self.navigate(to: url.deletingLastPathComponent())
+            self.contentVC.currentDirectoryView?.applySelection([url])
+            AppDelegate.shared.noteWindowStateChanged()
         }
         contentVC.onDirectoryVanished = { [weak self] in
             guard let self else { return }
@@ -242,13 +257,13 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func viewModeClicked(_ sender: NSSegmentedControl) {
-        let modes: [ViewMode] = [.icon, .list, .column]
+        let modes: [ViewMode] = [.icon, .list, .column, .flat]
         contentVC.setViewMode(modes[sender.selectedSegment])
         AppDelegate.shared.noteWindowStateChanged()
     }
 
     func selectViewModeControl(_ mode: ViewMode) {
-        let index = [ViewMode.icon, .list, .column].firstIndex(of: mode) ?? 1
+        let index = [ViewMode.icon, .list, .column, .flat].firstIndex(of: mode) ?? 1
         viewModeControl?.selectedSegment = index
     }
 
@@ -267,6 +282,12 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     @objc func viewAsColumns(_ sender: Any?) {
         contentVC.setViewMode(.column)
         selectViewModeControl(.column)
+        AppDelegate.shared.noteWindowStateChanged()
+    }
+
+    @objc func viewAsFlat(_ sender: Any?) {
+        contentVC.setViewMode(.flat)
+        selectViewModeControl(.flat)
         AppDelegate.shared.noteWindowStateChanged()
     }
 
@@ -320,9 +341,10 @@ extension BrowserWindowController: NSToolbarDelegate {
             let control = NSSegmentedControl(
                 images: [NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Icons")!,
                          NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "List")!,
-                         NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: "Columns")!],
+                         NSImage(systemSymbolName: "rectangle.split.3x1", accessibilityDescription: "Columns")!,
+                         NSImage(systemSymbolName: "list.bullet.indent", accessibilityDescription: "Flat")!],
                 trackingMode: .selectOne, target: self, action: #selector(viewModeClicked(_:)))
-            control.selectedSegment = [ViewMode.icon, .list, .column]
+            control.selectedSegment = [ViewMode.icon, .list, .column, .flat]
                 .firstIndex(of: contentVC.viewMode) ?? 1
             viewModeControl = control
             let item = NSToolbarItem(itemIdentifier: id)

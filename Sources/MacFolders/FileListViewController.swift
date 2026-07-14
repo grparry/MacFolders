@@ -22,6 +22,9 @@ final class FileListViewController: NSViewController, DirectoryView,
     NSMenuDelegate {
 
     var model: DirectoryModel
+    /// Option-clicking a column header: "sort EVERYTHING by this" — the
+    /// owner switches to flat view with that sort.
+    var onFlattenRequest: ((SortKey) -> Void)?
     var onOpen: ((URL) -> Void)?
     var contextMenu: NSMenu? {
         didSet { if isViewLoaded { outlineView.menu = contextMenu } }
@@ -409,6 +412,12 @@ final class FileListViewController: NSViewController, DirectoryView,
 
     func outlineView(_ outlineView: NSOutlineView,
                      sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]) {
+        if NSEvent.modifierFlags.contains(.option),
+           let key = outlineView.sortDescriptors.first?.key,
+           let sortKey = SortKey(rawValue: key) {
+            onFlattenRequest?(sortKey)
+            return
+        }
         guard let descriptor = outlineView.sortDescriptors.first,
               let key = descriptor.key, let sortKey = SortKey(rawValue: key) else { return }
         model.sortKey = sortKey

@@ -8,6 +8,8 @@ final class ContentViewController: NSViewController {
     var onOpenInNewTab: ((URL) -> Void)?
     /// Owner clears its toolbar search field when search ends from inside.
     var onSearchExited: (() -> Void)?
+    /// Flat view: leave flat, land in list view at the folder, item selected.
+    var onRevealInFolder: ((URL) -> Void)?
     /// The displayed directory itself was moved or deleted; the owner should
     /// navigate somewhere that still exists.
     var onDirectoryVanished: (() -> Void)?
@@ -164,11 +166,32 @@ final class ContentViewController: NSViewController {
         } else {
             switch mode {
             case .list:
-                next = FileListViewController(model: model)
+                let list = FileListViewController(model: model)
+                list.onFlattenRequest = { [weak self] sortKey in
+                    guard let self else { return }
+                    let path = self.model.directoryURL.path
+                    var config = AppDelegate.shared.workspaceManager
+                        .flatConfig(forPath: path)
+                    config.sortKey = sortKey
+                    do {
+                        try AppDelegate.shared.workspaceManager
+                            .setFlatConfig(config, forPath: path)
+                    } catch {
+                        NSAlert(error: error).runModal()
+                    }
+                    self.setViewMode(.flat)
+                }
+                next = list
             case .icon:
                 next = IconViewController(model: model)
             case .column:
                 next = ColumnViewController(model: model)
+            case .flat:
+                let flat = FlatViewController(model: model)
+                flat.onRevealInFolder = { [weak self] url in
+                    self?.onRevealInFolder?(url)
+                }
+                next = flat
             }
             next.onOpen = { [weak self] url in self?.onOpen?(url) }
             next.contextMenu = makeContextMenu()
@@ -234,6 +257,17 @@ final class ContentViewController: NSViewController {
                 try CloudFiles.evict(itemAt: url)
             }
         } catch { NSAlert(error: error).runModal() }
+    }
+
+    @objc func openInFlatView(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        onOpen?(url)
+        setViewMode(.flat)
+    }
+
+    @objc func revealSelectedInFolder(_ sender: Any?) {
+        guard let url = actionTargets.first else { return }
+        onRevealInFolder?(url)
     }
 
     @objc func openInNewTab(_ sender: NSMenuItem) {
@@ -529,6 +563,16 @@ extension ContentViewController: NSMenuDelegate {
                 newTab.target = self
                 newTab.representedObject = url
                 menu.addItem(newTab)
+                let flat = NSMenuItem(title: "Open in Flat View",
+                                      action: #selector(openInFlatView(_:)), keyEquivalent: "")
+                flat.target = self
+                flat.representedObject = url
+                menu.addItem(flat)
+            }
+            if viewMode == .flat {
+                menu.addItem(withTitle: "Show in Enclosing Folder",
+                             action: #selector(revealSelectedInFolder(_:)),
+                             keyEquivalent: "").target = self
             }
 
             let openWith = NSMenuItem(title: "Open With", action: nil, keyEquivalent: "")
