@@ -14,6 +14,25 @@ final class FlatScanner {
     /// Main-queue events.
     var onEvent: ((Event) -> Void)?
 
+    /// Folder-name patterns the walk refuses to descend into when the
+    /// folder's skip toggle is on. App-wide, user-editable, glob-matched
+    /// (fnmatch) — ".*" covers every dot-directory.
+    static let defaultSkipPatterns = [".*", "node_modules"]
+
+    static var skipPatterns: [String] {
+        get {
+            UserDefaults.standard.stringArray(forKey: "flatSkipPatterns")
+                ?? defaultSkipPatterns
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "flatSkipPatterns")
+        }
+    }
+
+    static func shouldSkip(directoryName name: String) -> Bool {
+        skipPatterns.contains { fnmatch($0, name, 0) == 0 }
+    }
+
     static var pauseThreshold: Int {
         let value = UserDefaults.standard.integer(forKey: "flatPauseThreshold")
         return value > 0 ? value : 50_000
@@ -45,9 +64,8 @@ final class FlatScanner {
                 guard let self, self.generation == expected else { return }
                 guard let values = try? url.resourceValues(forKeys: Set(keys)) else { continue }
                 if values.isDirectory == true {
-                    let name = url.lastPathComponent
                     if config.skipDotTrees,
-                       name.hasPrefix(".") || name == "node_modules" {
+                       Self.shouldSkip(directoryName: url.lastPathComponent) {
                         enumerator?.skipDescendants()
                     }
                     continue
