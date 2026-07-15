@@ -291,6 +291,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                   keyEquivalent: "")
             item.target = self
             item.representedObject = workspace.id
+            // Folders as sub-items: pick one and the workspace opens with
+            // that tab selected. (Dock menus don't fire parent items that
+            // have submenus, so Open Workspace leads the list.)
+            let tabCount = workspace.live.reduce(0) { $0 + $1.tabs.count }
+            if tabCount > 0 {
+                let submenu = NSMenu()
+                let openItem = NSMenuItem(title: "Open Workspace",
+                                          action: #selector(dockOpenWorkspace(_:)),
+                                          keyEquivalent: "")
+                openItem.target = self
+                openItem.representedObject = workspace.id
+                submenu.addItem(openItem)
+                submenu.addItem(.separator())
+                for (windowIndex, window) in workspace.live.enumerated() {
+                    if windowIndex > 0 { submenu.addItem(.separator()) }
+                    for (tabIndex, tab) in window.tabs.enumerated() {
+                        let url = URL(fileURLWithPath: tab.path)
+                        let display = FileManager.default.displayName(atPath: tab.path)
+                        let tabItem = NSMenuItem(
+                            title: display.isEmpty ? url.lastPathComponent : display,
+                            action: #selector(dockOpenWorkspaceTab(_:)),
+                            keyEquivalent: "")
+                        tabItem.target = self
+                        tabItem.representedObject =
+                            [workspace.id.uuidString, windowIndex, tabIndex] as [Any]
+                        let icon = NSWorkspace.shared.icon(forFile: tab.path)
+                        icon.size = NSSize(width: 16, height: 16)
+                        tabItem.image = icon
+                        submenu.addItem(tabItem)
+                    }
+                }
+                item.submenu = submenu
+            }
             menu.addItem(item)
         }
         menu.addItem(.separator())
@@ -304,6 +337,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func dockOpenWorkspace(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID else { return }
         openWorkspace(id)
+    }
+
+    @objc private func dockOpenWorkspaceTab(_ sender: NSMenuItem) {
+        guard let payload = sender.representedObject as? [Any],
+              payload.count == 3,
+              let uuidString = payload[0] as? String,
+              let id = UUID(uuidString: uuidString),
+              let windowIndex = payload[1] as? Int,
+              let tabIndex = payload[2] as? Int else { return }
+        openWorkspace(id)
+        session.selectTab(workspaceID: id, windowIndex: windowIndex, tabIndex: tabIndex)
+        noteWindowStateChanged()
     }
 
     // MARK: Windows
