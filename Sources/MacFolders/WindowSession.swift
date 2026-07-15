@@ -66,30 +66,6 @@ final class WindowSession {
         }
     }
 
-    /// Select a specific tab (by window/tab index in stored-state order)
-    /// in an open workspace's windows.
-    func selectTab(workspaceID: UUID, windowIndex: Int, tabIndex: Int) {
-        var groups: [NSWindowTabGroup] = []
-        var standalone: [NSWindow] = []
-        for controller in controllers(for: workspaceID) {
-            guard let window = controller.window else { continue }
-            if let group = window.tabGroup {
-                if !groups.contains(where: { $0 === group }) {
-                    groups.append(group)
-                }
-            } else {
-                standalone.append(window)
-            }
-        }
-        if groups.indices.contains(windowIndex) {
-            let group = groups[windowIndex]
-            guard group.windows.indices.contains(tabIndex) else { return }
-            group.windows[tabIndex].makeKeyAndOrderFront(nil)
-        } else if standalone.indices.contains(windowIndex - groups.count) {
-            standalone[windowIndex - groups.count].makeKeyAndOrderFront(nil)
-        }
-    }
-
     /// Bring an already-open workspace's windows forward. False if none.
     /// Fronts one window per tab GROUP — ordering front a non-selected tab
     /// would switch the group's selection to it.
