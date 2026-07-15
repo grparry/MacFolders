@@ -147,8 +147,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func windowBecameKey(_ notification: Notification) {
-        guard let controller = (notification.object as? NSWindow)?.windowController
+        guard let window = notification.object as? NSWindow,
+              let controller = window.windowController
                 as? BrowserWindowController else { return }
+        // Selecting a tab from the Dock's window list keys the tab's window,
+        // but the group's visible selection doesn't always follow when the
+        // app is activating — enforce it. (No-op when already selected, so
+        // this can't loop.)
+        if let group = window.tabGroup, group.selectedWindow !== window {
+            group.selectedWindow = window
+        }
         // The tab bar is always visible — no hide-on-single-tab complexity.
         controller.ensureTabBarVisible()
         reconcileTabGroupWorkspaces()
