@@ -66,4 +66,12 @@ enum FileOperations {
             try FileManager.default.trashItem(at: url, resultingItemURL: nil)
         }
     }
+
+    /// Permanent removal, bypassing the Trash. Callers confirm first —
+    /// there is no undo.
+    static func deleteImmediately(_ urls: [URL]) throws {
+        for url in urls {
+            try FileManager.default.removeItem(at: url)
+        }
+    }
 }

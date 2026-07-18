@@ -115,7 +115,9 @@ you clear the field or navigate.
   copy), including drops onto sidebar folders and in every view.
 - Copy/Paste (Cmd+C/V) — and **Cut/Paste (Cmd+X/V) that actually moves**.
 - Rename in place, Duplicate, Move to Trash (Cmd+Delete), New Folder
-  (Cmd+Shift+N) targeted at the folder you clicked.
+  (Cmd+Shift+N) targeted at the folder you clicked. Hold **Shift** while
+  right-clicking and Move to Trash becomes **Delete Immediately…** —
+  permanent, bypasses the Trash, always confirms with the exact count.
 - **Open With**: default app labeled first, alphabetized list, versions
   shown for duplicate names, multi-selection intersection. Works on folders
   too. **Other…** opens an app picker with an explicit choice: open once,

@@ -453,6 +453,23 @@ final class ContentViewController: NSViewController {
         catch { NSAlert(error: error).runModal() }
     }
 
+    /// Shift+right-click alternate for Move to Trash: permanent, no Trash,
+    /// no undo — so it always confirms with the exact count.
+    @objc func deleteImmediately(_ sender: Any?) {
+        let targets = actionTargets
+        guard !targets.isEmpty else { return }
+        let alert = NSAlert()
+        alert.messageText = targets.count == 1
+            ? "Delete “\(targets[0].lastPathComponent)” immediately?"
+            : "Delete \(targets.count) items immediately?"
+        alert.informativeText = "This bypasses the Trash and cannot be undone."
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        do { try FileOperations.deleteImmediately(targets) }
+        catch { NSAlert(error: error).runModal() }
+    }
+
     @objc func trashSelected(_ sender: Any?) {
         do { try FileOperations.trash(actionTargets) }
         catch { NSAlert(error: error).runModal() }
@@ -621,8 +638,14 @@ extension ContentViewController: NSMenuDelegate {
                          action: #selector(renameSelected(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Duplicate",
                          action: #selector(duplicateSelected(_:)), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "Move to Trash",
-                         action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
+            if NSEvent.modifierFlags.contains(.shift) {
+                menu.addItem(withTitle: "Delete Immediately…",
+                             action: #selector(deleteImmediately(_:)),
+                             keyEquivalent: "").target = self
+            } else {
+                menu.addItem(withTitle: "Move to Trash",
+                             action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
+            }
             menu.addItem(.separator())
             menu.addItem(withTitle: "Cut",
                          action: #selector(cut(_:)), keyEquivalent: "").target = self

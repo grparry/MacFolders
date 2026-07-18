@@ -94,4 +94,19 @@ final class FileOperationsTests: XCTestCase {
         try FileOperations.trash([file])
         XCTAssertFalse(fm.fileExists(atPath: file.path))
     }
+
+    func testDeleteImmediatelyRemovesFilesAndFolders() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: dir.appendingPathComponent("folder"), withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("file.txt")
+        try Data().write(to: file)
+        try FileOperations.deleteImmediately([file, dir.appendingPathComponent("folder")])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("folder").path))
+        XCTAssertThrowsError(try FileOperations.deleteImmediately([file]))
+        try FileManager.default.removeItem(at: dir)
+    }
 }
