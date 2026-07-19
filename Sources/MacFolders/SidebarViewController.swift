@@ -133,7 +133,7 @@ final class SidebarViewController: NSViewController,
         let menu = NSMenu()
         menu.delegate = self
         outlineView.menu = menu
-        outlineView.registerForDraggedTypes([.fileURL, .foldersFavorite])
+        outlineView.registerForDraggedTypes(DropBehavior.registeredTypes + [.foldersFavorite])
 
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(self, selector: #selector(volumesChanged),
@@ -329,7 +329,9 @@ final class SidebarViewController: NSViewController,
                      item: Any?, childIndex index: Int) -> Bool {
         if let dest = dropIntoFolder(item: item, index: index, info: info) {
             let sources = DropBehavior.urls(from: info)
-            guard !sources.isEmpty else { return false }
+            guard !sources.isEmpty else {
+                return DropBehavior.receivePromises(from: info, destination: dest)
+            }
             let operation = DropBehavior.operation(for: sources, destination: dest, info: info)
             return DropBehavior.perform(operation, sources: sources, destination: dest)
         }

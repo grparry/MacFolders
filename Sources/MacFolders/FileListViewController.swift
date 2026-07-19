@@ -240,7 +240,7 @@ final class FileListViewController: NSViewController, DirectoryView,
         outlineView.target = self
         outlineView.doubleAction = #selector(doubleClicked)
         outlineView.menu = contextMenu
-        outlineView.registerForDraggedTypes([.fileURL])
+        outlineView.registerForDraggedTypes(DropBehavior.registeredTypes)
         outlineView.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
         outlineView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         scrollView.documentView = outlineView
@@ -471,13 +471,15 @@ final class FileListViewController: NSViewController, DirectoryView,
 
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo,
                      item: Any?, childIndex index: Int) -> Bool {
-        let sources = DropBehavior.urls(from: info)
-        guard !sources.isEmpty else { return false }
         let destination: URL
         if let node = item as? ListNode, node.item.isDirectory {
             destination = node.item.url
         } else {
             destination = model.directoryURL
+        }
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.isEmpty else {
+            return DropBehavior.receivePromises(from: info, destination: destination)
         }
         let operation = DropBehavior.operation(for: sources, destination: destination, info: info)
         return DropBehavior.perform(operation, sources: sources, destination: destination)

@@ -20,6 +20,7 @@ enum DropBehavior {
     static func canAcceptFileDrop(_ info: NSDraggingInfo) -> Bool {
         info.draggingPasteboard.canReadObject(
             forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+            || hasPromises(info)
     }
 
     /// Hover-time operation from the source's mask alone (no content reads).
@@ -65,6 +66,45 @@ enum DropBehavior {
             NSAlert(error: error).runModal()
             return false
         }
+    }
+
+    /// Types every drop surface should register: real file URLs plus file
+    /// promises (browsers, Mail, Photos — the file exists only on request).
+    static var registeredTypes: [NSPasteboard.PasteboardType] {
+        [.fileURL] + NSFilePromiseReceiver.readableDraggedTypes
+            .map { NSPasteboard.PasteboardType($0) }
+    }
+
+    static func hasPromises(_ info: NSDraggingInfo) -> Bool {
+        info.draggingPasteboard.canReadObject(
+            forClasses: [NSFilePromiseReceiver.self], options: nil)
+    }
+
+    private static let promiseQueue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.qualityOfService = .userInitiated
+        return queue
+    }()
+
+    /// Materialize promised files into the destination (always a copy-in —
+    /// the promiser writes fresh files). Errors surface per file.
+    static func receivePromises(from info: NSDraggingInfo,
+                                destination: URL) -> Bool {
+        let receivers = (info.draggingPasteboard.readObjects(
+            forClasses: [NSFilePromiseReceiver.self], options: nil)
+            as? [NSFilePromiseReceiver]) ?? []
+        guard !receivers.isEmpty else { return false }
+        for receiver in receivers {
+            receiver.receivePromisedFiles(atDestination: destination, options: [:],
+                                          operationQueue: promiseQueue) { _, error in
+                if let error {
+                    DispatchQueue.main.async {
+                        NSAlert(error: error).runModal()
+                    }
+                }
+            }
+        }
+        return true
     }
 
     static func urls(from info: NSDraggingInfo) -> [URL] {
