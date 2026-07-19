@@ -49,3 +49,11 @@ The Xcode project is generated — edit `project.yml`, never the `.xcodeproj`.
 - Modern iCloud Drive exposes undownloaded files as real-named dataless
   items, not ".name.icloud" placeholders; `isUbiquitousItem` alone reads
   everything as downloaded — use `ubiquitousItemDownloadingStatus`.
+- Cross-app drag pasteboard CONTENT is unreadable during hover — reading
+  URLs in `validateDrop` returns empty for external drags and the drop
+  gets refused. Hover may only `canReadObject`; read content at accept.
+- Many apps drag file PROMISES, not file URLs (browsers, Mail, Photos).
+  Register `NSFilePromiseReceiver.readableDraggedTypes` and materialize
+  at accept, or those drags are refused at the type level. Also clamp
+  returned drag operations to `draggingSourceOperationMask` — an
+  operation outside the source's mask refuses the drop outright.
