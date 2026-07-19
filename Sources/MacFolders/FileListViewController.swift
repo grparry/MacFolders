@@ -460,12 +460,12 @@ final class FileListViewController: NSViewController, DirectoryView,
             let dest = node.item.url
             guard !sources.contains(dest) else { return [] }
             outlineView.setDropItem(node, dropChildIndex: NSOutlineViewDropOnItemIndex)
-            return DropBehavior.operation(for: sources, destination: dest)
+            return DropBehavior.operation(for: sources, destination: dest, info: info)
         }
         outlineView.setDropItem(nil, dropChildIndex: NSOutlineViewDropOnItemIndex)
         guard !sources.contains(where: { $0.deletingLastPathComponent() == model.directoryURL })
         else { return [] }  // already here
-        return DropBehavior.operation(for: sources, destination: model.directoryURL)
+        return DropBehavior.operation(for: sources, destination: model.directoryURL, info: info)
     }
 
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo,
@@ -477,7 +477,7 @@ final class FileListViewController: NSViewController, DirectoryView,
         } else {
             destination = model.directoryURL
         }
-        let operation = DropBehavior.operation(for: sources, destination: destination)
+        let operation = DropBehavior.operation(for: sources, destination: destination, info: info)
         return DropBehavior.perform(operation, sources: sources, destination: destination)
     }
 

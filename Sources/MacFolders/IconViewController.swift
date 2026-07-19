@@ -160,12 +160,12 @@ final class IconViewController: NSViewController, DirectoryView,
            model.items[index].isDirectory {
             let dest = model.items[index].url
             guard !sources.contains(dest) else { return [] }
-            return DropBehavior.operation(for: sources, destination: dest)
+            return DropBehavior.operation(for: sources, destination: dest, info: draggingInfo)
         }
         dropOperation.pointee = .before
         guard !sources.contains(where: { $0.deletingLastPathComponent() == model.directoryURL })
         else { return [] }  // already here
-        return DropBehavior.operation(for: sources, destination: model.directoryURL)
+        return DropBehavior.operation(for: sources, destination: model.directoryURL, info: draggingInfo)
     }
 
     func collectionView(_ collectionView: NSCollectionView,
@@ -180,7 +180,7 @@ final class IconViewController: NSViewController, DirectoryView,
         } else {
             destination = model.directoryURL
         }
-        let operation = DropBehavior.operation(for: sources, destination: destination)
+        let operation = DropBehavior.operation(for: sources, destination: destination, info: draggingInfo)
         return DropBehavior.perform(operation, sources: sources, destination: destination)
     }
 

@@ -320,7 +320,7 @@ final class SidebarViewController: NSViewController,
             let sources = (info.draggingPasteboard.readObjects(
                 forClasses: [NSURL.self],
                 options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
-            return DropBehavior.operation(for: sources, destination: dest)
+            return DropBehavior.operation(for: sources, destination: dest, info: info)
         }
         guard !droppableFolders(from: info).isEmpty else { return [] }
         outlineView.setDropItem(nil, dropChildIndex: clampedDropIndex(index, item: item))
@@ -333,7 +333,7 @@ final class SidebarViewController: NSViewController,
             let sources = (info.draggingPasteboard.readObjects(
                 forClasses: [NSURL.self],
                 options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
-            let operation = DropBehavior.operation(for: sources, destination: dest)
+            let operation = DropBehavior.operation(for: sources, destination: dest, info: info)
             return DropBehavior.perform(operation, sources: sources, destination: dest)
         }
         if let path = info.draggingPasteboard.string(forType: .foldersFavorite) {
