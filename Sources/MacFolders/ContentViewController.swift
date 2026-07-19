@@ -527,8 +527,18 @@ final class ContentViewController: NSViewController {
     }
 
     @objc func newFolder(_ sender: Any?) {
-        do { try FileOperations.newFolder(in: actionDirectory) }
-        catch { NSAlert(error: error).runModal() }
+        do {
+            let created = try FileOperations.newFolder(in: actionDirectory)
+            // Finder flow: the new folder appears selected with its name in
+            // inline edit, ready to type over. (Column view creates in the
+            // clicked column and refreshes via its own watcher.)
+            if actionDirectory == model.directoryURL {
+                try model.reload()
+                currentDirectoryView?.modelDidChange()
+                currentDirectoryView?.applySelection([created])
+                currentDirectoryView?.beginRenaming(created)
+            }
+        } catch { NSAlert(error: error).runModal() }
     }
 
     @objc func revealInFinder(_ sender: Any?) {
