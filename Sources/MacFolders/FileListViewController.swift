@@ -454,23 +454,25 @@ final class FileListViewController: NSViewController, DirectoryView,
 
     func outlineView(_ outlineView: NSOutlineView, validateDrop info: NSDraggingInfo,
                      proposedItem item: Any?, proposedChildIndex index: Int) -> NSDragOperation {
+        guard DropBehavior.canAcceptFileDrop(info) else { return [] }
+        // Local drags expose their URLs at hover; external ones don't until
+        // drop — self-drop guards apply only when we can see the sources.
         let sources = DropBehavior.urls(from: info)
-        guard !sources.isEmpty else { return [] }
         if let node = item as? ListNode, node.item.isDirectory {
-            let dest = node.item.url
-            guard !sources.contains(dest) else { return [] }
+            guard !sources.contains(node.item.url) else { return [] }
             outlineView.setDropItem(node, dropChildIndex: NSOutlineViewDropOnItemIndex)
-            return DropBehavior.operation(for: sources, destination: dest, info: info)
+            return DropBehavior.hoverOperation(info)
         }
         outlineView.setDropItem(nil, dropChildIndex: NSOutlineViewDropOnItemIndex)
         guard !sources.contains(where: { $0.deletingLastPathComponent() == model.directoryURL })
-        else { return [] }  // already here
-        return DropBehavior.operation(for: sources, destination: model.directoryURL, info: info)
+            || sources.isEmpty else { return [] }  // already here
+        return DropBehavior.hoverOperation(info)
     }
 
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo,
                      item: Any?, childIndex index: Int) -> Bool {
         let sources = DropBehavior.urls(from: info)
+        guard !sources.isEmpty else { return false }
         let destination: URL
         if let node = item as? ListNode, node.item.isDirectory {
             destination = node.item.url

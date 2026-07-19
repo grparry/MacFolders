@@ -13,6 +13,26 @@ enum DropBehavior {
         return sourceVolume.isEqual(destVolume) ? .move : .copy
     }
 
+    /// Hover-time check that file URLs are on the drag pasteboard WITHOUT
+    /// reading them — cross-app drag content is privacy-restricted until the
+    /// actual drop, and a content read during hover comes back empty, which
+    /// made every external drag validate as refusable.
+    static func canAcceptFileDrop(_ info: NSDraggingInfo) -> Bool {
+        info.draggingPasteboard.canReadObject(
+            forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+    }
+
+    /// Hover-time operation from the source's mask alone (no content reads).
+    /// .generic defers Finder semantics to drop time.
+    static func hoverOperation(_ info: NSDraggingInfo) -> NSDragOperation {
+        let mask = info.draggingSourceOperationMask
+        if NSEvent.modifierFlags.contains(.option), mask.contains(.copy) { return .copy }
+        if mask.contains(.generic) { return .generic }
+        if mask.contains(.move) { return .move }
+        if mask.contains(.copy) { return .copy }
+        return []
+    }
+
     /// The Finder-semantic operation clamped to what the DRAG SOURCE allows.
     /// Our own drags offer move+copy, but external sources (Finder, Mail,
     /// browsers) each offer their own mask — returning an operation outside

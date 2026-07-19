@@ -299,12 +299,13 @@ final class SidebarViewController: NSViewController,
         guard index == NSOutlineViewDropOnItemIndex,
               let rowIndex = item as? Int, entries.indices.contains(rowIndex),
               case .location(let dest) = entries[rowIndex],
-              (try? dest.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+              (try? dest.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true,
+              DropBehavior.canAcceptFileDrop(info)
         else { return nil }
-        let sources = (info.draggingPasteboard.readObjects(
-            forClasses: [NSURL.self],
-            options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
-        guard !sources.isEmpty, !sources.contains(dest),
+        // External drag content is unreadable until drop; self-drop guards
+        // apply only when the sources are visible (local drags).
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.contains(dest),
               !sources.contains(where: { $0.deletingLastPathComponent() == dest })
         else { return nil }
         return dest
@@ -316,11 +317,8 @@ final class SidebarViewController: NSViewController,
             outlineView.setDropItem(nil, dropChildIndex: clampedDropIndex(index, item: item))
             return .move
         }
-        if let dest = dropIntoFolder(item: item, index: index, info: info) {
-            let sources = (info.draggingPasteboard.readObjects(
-                forClasses: [NSURL.self],
-                options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
-            return DropBehavior.operation(for: sources, destination: dest, info: info)
+        if dropIntoFolder(item: item, index: index, info: info) != nil {
+            return DropBehavior.hoverOperation(info)
         }
         guard !droppableFolders(from: info).isEmpty else { return [] }
         outlineView.setDropItem(nil, dropChildIndex: clampedDropIndex(index, item: item))
@@ -330,9 +328,8 @@ final class SidebarViewController: NSViewController,
     func outlineView(_ outlineView: NSOutlineView, acceptDrop info: NSDraggingInfo,
                      item: Any?, childIndex index: Int) -> Bool {
         if let dest = dropIntoFolder(item: item, index: index, info: info) {
-            let sources = (info.draggingPasteboard.readObjects(
-                forClasses: [NSURL.self],
-                options: [.urlReadingFileURLsOnly: true]) as? [URL]) ?? []
+            let sources = DropBehavior.urls(from: info)
+            guard !sources.isEmpty else { return false }
             let operation = DropBehavior.operation(for: sources, destination: dest, info: info)
             return DropBehavior.perform(operation, sources: sources, destination: dest)
         }

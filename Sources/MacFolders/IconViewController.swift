@@ -153,19 +153,18 @@ final class IconViewController: NSViewController, DirectoryView,
                         validateDrop draggingInfo: NSDraggingInfo,
                         proposedIndexPath: AutoreleasingUnsafeMutablePointer<NSIndexPath>,
                         dropOperation: UnsafeMutablePointer<NSCollectionView.DropOperation>) -> NSDragOperation {
+        guard DropBehavior.canAcceptFileDrop(draggingInfo) else { return [] }
         let sources = DropBehavior.urls(from: draggingInfo)
-        guard !sources.isEmpty else { return [] }
         let index = proposedIndexPath.pointee.item
         if dropOperation.pointee == .on, model.items.indices.contains(index),
            model.items[index].isDirectory {
-            let dest = model.items[index].url
-            guard !sources.contains(dest) else { return [] }
-            return DropBehavior.operation(for: sources, destination: dest, info: draggingInfo)
+            guard !sources.contains(model.items[index].url) else { return [] }
+            return DropBehavior.hoverOperation(draggingInfo)
         }
         dropOperation.pointee = .before
         guard !sources.contains(where: { $0.deletingLastPathComponent() == model.directoryURL })
-        else { return [] }  // already here
-        return DropBehavior.operation(for: sources, destination: model.directoryURL, info: draggingInfo)
+            || sources.isEmpty else { return [] }  // already here
+        return DropBehavior.hoverOperation(draggingInfo)
     }
 
     func collectionView(_ collectionView: NSCollectionView,
@@ -173,6 +172,7 @@ final class IconViewController: NSViewController, DirectoryView,
                         indexPath: IndexPath,
                         dropOperation: NSCollectionView.DropOperation) -> Bool {
         let sources = DropBehavior.urls(from: draggingInfo)
+        guard !sources.isEmpty else { return false }
         let destination: URL
         if dropOperation == .on, model.items.indices.contains(indexPath.item),
            model.items[indexPath.item].isDirectory {
