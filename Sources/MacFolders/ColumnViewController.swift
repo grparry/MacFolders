@@ -451,28 +451,30 @@ final class ColumnViewController: NSViewController, DirectoryView,
     func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo,
                    proposedRow row: Int,
                    proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
-        guard let column = column(for: tableView) else { return [] }
+        guard let column = column(for: tableView),
+              DropBehavior.canAcceptFileDrop(info) else { return [] }
         let sources = DropBehavior.urls(from: info)
-        guard !sources.isEmpty else { return [] }
         if dropOperation == .on, column.items.indices.contains(row),
            column.items[row].isDirectory {
             let dest = column.items[row].url
             guard !sources.contains(dest),
                   !sources.contains(where: { $0.deletingLastPathComponent() == dest })
             else { return [] }
-            return DropBehavior.operation(for: sources, destination: dest, info: info)
+            return DropBehavior.hoverOperation(info)
         }
         tableView.setDropRow(-1, dropOperation: .on)  // whole-column drop
         guard !sources.contains(column.url),
-              !sources.contains(where: { $0.deletingLastPathComponent() == column.url })
+              (!sources.contains(where: { $0.deletingLastPathComponent() == column.url })
+                || sources.isEmpty)
         else { return [] }
-        return DropBehavior.operation(for: sources, destination: column.url, info: info)
+        return DropBehavior.hoverOperation(info)
     }
 
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
                    row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
         guard let column = column(for: tableView) else { return false }
         let sources = DropBehavior.urls(from: info)
+        guard !sources.isEmpty else { return false }
         let destination: URL
         if dropOperation == .on, column.items.indices.contains(row),
            column.items[row].isDirectory {
