@@ -124,7 +124,7 @@ final class IconViewController: NSViewController, DirectoryView,
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = true
         collectionView.menu = contextMenu
-        collectionView.registerForDraggedTypes([.fileURL])
+        collectionView.registerForDraggedTypes(DropBehavior.registeredTypes)
         collectionView.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
         collectionView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         collectionView.onDoubleClick = { [weak self] in
@@ -171,14 +171,17 @@ final class IconViewController: NSViewController, DirectoryView,
                         acceptDrop draggingInfo: NSDraggingInfo,
                         indexPath: IndexPath,
                         dropOperation: NSCollectionView.DropOperation) -> Bool {
-        let sources = DropBehavior.urls(from: draggingInfo)
-        guard !sources.isEmpty else { return false }
         let destination: URL
         if dropOperation == .on, model.items.indices.contains(indexPath.item),
            model.items[indexPath.item].isDirectory {
             destination = model.items[indexPath.item].url
         } else {
             destination = model.directoryURL
+        }
+        let sources = DropBehavior.urls(from: draggingInfo)
+        guard !sources.isEmpty else {
+            return DropBehavior.receivePromises(from: draggingInfo,
+                                                destination: destination)
         }
         let operation = DropBehavior.operation(for: sources, destination: destination, info: draggingInfo)
         return DropBehavior.perform(operation, sources: sources, destination: destination)

@@ -196,7 +196,7 @@ final class ColumnViewController: NSViewController, DirectoryView,
         table.action = #selector(columnClicked(_:))
         table.doubleAction = #selector(doubleClicked(_:))
         table.menu = contextMenu
-        table.registerForDraggedTypes([.fileURL])
+        table.registerForDraggedTypes(DropBehavior.registeredTypes)
         table.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
         table.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         table.onNavigateLeft = { [weak self, weak table] in
@@ -473,14 +473,16 @@ final class ColumnViewController: NSViewController, DirectoryView,
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
                    row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
         guard let column = column(for: tableView) else { return false }
-        let sources = DropBehavior.urls(from: info)
-        guard !sources.isEmpty else { return false }
         let destination: URL
         if dropOperation == .on, column.items.indices.contains(row),
            column.items[row].isDirectory {
             destination = column.items[row].url
         } else {
             destination = column.url
+        }
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.isEmpty else {
+            return DropBehavior.receivePromises(from: info, destination: destination)
         }
         let operation = DropBehavior.operation(for: sources, destination: destination, info: info)
         return DropBehavior.perform(operation, sources: sources, destination: destination)
