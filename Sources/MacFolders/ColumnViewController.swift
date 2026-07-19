@@ -460,13 +460,13 @@ final class ColumnViewController: NSViewController, DirectoryView,
             guard !sources.contains(dest),
                   !sources.contains(where: { $0.deletingLastPathComponent() == dest })
             else { return [] }
-            return DropBehavior.operation(for: sources, destination: dest)
+            return DropBehavior.operation(for: sources, destination: dest, info: info)
         }
         tableView.setDropRow(-1, dropOperation: .on)  // whole-column drop
         guard !sources.contains(column.url),
               !sources.contains(where: { $0.deletingLastPathComponent() == column.url })
         else { return [] }
-        return DropBehavior.operation(for: sources, destination: column.url)
+        return DropBehavior.operation(for: sources, destination: column.url, info: info)
     }
 
     func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
@@ -480,7 +480,7 @@ final class ColumnViewController: NSViewController, DirectoryView,
         } else {
             destination = column.url
         }
-        let operation = DropBehavior.operation(for: sources, destination: destination)
+        let operation = DropBehavior.operation(for: sources, destination: destination, info: info)
         return DropBehavior.perform(operation, sources: sources, destination: destination)
         // Watchers refresh the affected columns.
     }
