@@ -507,12 +507,22 @@ final class ContentViewController: NSViewController {
         Self.pendingCut = (urls, pasteboard.changeCount)
     }
 
+    /// Paste lands in the single selected/right-clicked folder when there
+    /// is one; otherwise in the folder being viewed.
+    private var pasteDestination: URL {
+        if actionTargets.count == 1, let target = actionTargets.first,
+           (try? target.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+            return target
+        }
+        return actionDirectory
+    }
+
     @objc func paste(_ sender: Any?) {
         let pasteboard = NSPasteboard.general
         guard let urls = pasteboard.readObjects(
             forClasses: [NSURL.self]) as? [URL], !urls.isEmpty else { return }
         do {
-            let destination = actionDirectory
+            let destination = pasteDestination
             if let cut = Self.pendingCut, cut.changeCount == pasteboard.changeCount {
                 // Items already here are a no-op, like Finder.
                 let moving = cut.urls.filter {
