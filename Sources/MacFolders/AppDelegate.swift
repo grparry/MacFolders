@@ -306,7 +306,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                        action: #selector(newWindow(_:)), keyEquivalent: "")
         newWindowItem.target = self
         menu.addItem(newWindowItem)
+        // Path Finder-style Finder control: hide/show its windows without
+        // quitting it (the desktop layer is untouched by hiding).
+        if let finder = Self.finderApp {
+            let finderItem = NSMenuItem(
+                title: finder.isHidden ? "Show Finder" : "Hide Finder",
+                action: #selector(toggleFinderHidden(_:)), keyEquivalent: "")
+            finderItem.target = self
+            menu.addItem(finderItem)
+        }
         return menu
+    }
+
+    private static var finderApp: NSRunningApplication? {
+        NSRunningApplication.runningApplications(
+            withBundleIdentifier: "com.apple.finder").first
+    }
+
+    @objc private func toggleFinderHidden(_ sender: NSMenuItem) {
+        guard let finder = Self.finderApp else { return }
+        if finder.isHidden {
+            finder.unhide()
+            finder.activate()
+        } else {
+            finder.hide()
+        }
     }
 
     @objc private func dockOpenWorkspace(_ sender: NSMenuItem) {
