@@ -306,46 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                        action: #selector(newWindow(_:)), keyEquivalent: "")
         newWindowItem.target = self
         menu.addItem(newWindowItem)
-        // Path Finder-style Finder control: hide/show its windows without
-        // quitting it (the desktop layer is untouched by hiding).
-        if let finder = Self.finderApp {
-            let finderItem = NSMenuItem(
-                title: finder.isHidden ? "Show Finder" : "Hide Finder",
-                action: #selector(toggleFinderHidden(_:)), keyEquivalent: "")
-            finderItem.target = self
-            menu.addItem(finderItem)
-        }
         return menu
-    }
-
-    private static var finderApp: NSRunningApplication? {
-        NSRunningApplication.runningApplications(
-            withBundleIdentifier: "com.apple.finder").first
-    }
-
-    /// NSRunningApplication.hide() returns false for Finder — macOS refuses
-    /// that route for Finder specifically. The System Events process-visible
-    /// property works, gated by a one-time Automation consent prompt.
-    @objc private func toggleFinderHidden(_ sender: NSMenuItem) {
-        guard let finder = Self.finderApp else { return }
-        let makeVisible = finder.isHidden
-        let source = "tell application \"System Events\" to set visible of "
-            + "application process \"Finder\" to \(makeVisible)"
-        var errorInfo: NSDictionary?
-        NSAppleScript(source: source)?.executeAndReturnError(&errorInfo)
-        if let errorInfo {
-            let alert = NSAlert()
-            alert.messageText = "Could not \(makeVisible ? "show" : "hide") Finder."
-            alert.informativeText = (errorInfo[NSAppleScript.errorMessage] as? String ?? "")
-                + "\n\nIf you declined the automation prompt, re-enable it in "
-                + "System Settings → Privacy & Security → Automation → MacFolders "
-                + "→ System Events."
-            alert.runModal()
-            return
-        }
-        if makeVisible {
-            finder.activate()
-        }
     }
 
     @objc private func dockOpenWorkspace(_ sender: NSMenuItem) {

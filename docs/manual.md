@@ -22,9 +22,7 @@ own sidebar favorites and recent items. The window title reads
 - Selecting a workspace anywhere — Workspaces menu (Ctrl+Cmd+1…9), Dock
   menu — is a *launcher*: it brings that workspace's windows forward if
   open, opens them otherwise, and never repurposes existing windows.
-- The Dock menu lists workspaces above macOS's own open-window list, and
-  ends with **Hide Finder / Show Finder** — Path Finder-style control that
-  hides Finder's windows without quitting it (desktop icons unaffected).
+- The Dock menu lists workspaces above macOS's own open-window list.
 
 ### Tabs
 
