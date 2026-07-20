@@ -323,28 +323,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             withBundleIdentifier: "com.apple.finder").first
     }
 
-    /// NSRunningApplication.hide() returns false for Finder — macOS refuses
-    /// that route for Finder specifically. The System Events process-visible
-    /// property works, gated by a one-time Automation consent prompt.
     @objc private func toggleFinderHidden(_ sender: NSMenuItem) {
         guard let finder = Self.finderApp else { return }
-        let makeVisible = finder.isHidden
-        let source = "tell application \"System Events\" to set visible of "
-            + "application process \"Finder\" to \(makeVisible)"
-        var errorInfo: NSDictionary?
-        NSAppleScript(source: source)?.executeAndReturnError(&errorInfo)
-        if let errorInfo {
-            let alert = NSAlert()
-            alert.messageText = "Could not \(makeVisible ? "show" : "hide") Finder."
-            alert.informativeText = (errorInfo[NSAppleScript.errorMessage] as? String ?? "")
-                + "\n\nIf you declined the automation prompt, re-enable it in "
-                + "System Settings → Privacy & Security → Automation → MacFolders "
-                + "→ System Events."
-            alert.runModal()
-            return
-        }
-        if makeVisible {
+        if finder.isHidden {
+            finder.unhide()
             finder.activate()
+        } else {
+            finder.hide()
         }
     }
 

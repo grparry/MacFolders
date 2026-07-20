@@ -24,8 +24,6 @@
 	<string>1</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>MacFolders hides and shows Finder windows at your command.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>
