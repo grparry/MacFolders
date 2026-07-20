@@ -20,6 +20,7 @@ targets:
       path: Sources/MacFolders/Info.plist
       properties:
         CFBundleName: MacFolders
+        NSAppleEventsUsageDescription: MacFolders hides and shows Finder windows at your command.
         CFBundleDisplayName: MacFolders
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
