@@ -82,11 +82,12 @@ final class FileOperationsTests: XCTestCase {
         XCTAssertTrue(isDir.boolValue)
     }
 
-    func testNewFolderNaming() throws {
-        let first = try FileOperations.newFolder(in: tempDir)
-        XCTAssertEqual(first.lastPathComponent, "untitled folder")
-        let second = try FileOperations.newFolder(in: tempDir)
-        XCTAssertEqual(second.lastPathComponent, "untitled folder 2")
+    func testCreateFolderNamedAndCollisionThrows() throws {
+        let created = try FileOperations.createFolder(named: "Reports", in: tempDir)
+        XCTAssertEqual(created.lastPathComponent, "Reports")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: created.path))
+        XCTAssertThrowsError(
+            try FileOperations.createFolder(named: "Reports", in: tempDir))
     }
 
     func testTrashRemovesFromDirectory() throws {

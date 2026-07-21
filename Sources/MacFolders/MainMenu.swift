@@ -26,9 +26,10 @@ enum MainMenu {
                          action: #selector(BrowserWindowController.newWindowForTab(_:)),
                          keyEquivalent: "t")
         let newFolder = fileMenu.addItem(withTitle: "New Folder",
-                                         action: #selector(ContentViewController.newFolder(_:)),
+                                         action: #selector(AppDelegate.newFolderAtRoot(_:)),
                                          keyEquivalent: "n")
         newFolder.keyEquivalentModifierMask = [.command, .shift]
+        newFolder.target = AppDelegate.shared
         fileMenu.addItem(.separator())
         let openWith = fileMenu.addItem(withTitle: "Open With", action: nil,
                                         keyEquivalent: "")

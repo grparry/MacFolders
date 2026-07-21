@@ -16,14 +16,10 @@ protocol DirectoryView: NSViewController {
     /// Re-select these items on restore. Views that can't (columns, where
     /// selection IS the navigation chain) use the no-op default.
     func applySelection(_ urls: Set<URL>)
-    /// Put the item's name into inline edit (New Folder flow). Views
-    /// without inline editing use the no-op default.
-    func beginRenaming(_ url: URL)
 }
 
 extension DirectoryView {
     func applySelection(_ urls: Set<URL>) {}
-    func beginRenaming(_ url: URL) {}
 }
 
 extension DirectoryView {
