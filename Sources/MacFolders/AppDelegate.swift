@@ -389,6 +389,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
+    /// File > New Folder (explicit target — reliable from any focus state).
+    @objc func newFolderAtRoot(_ sender: Any?) {
+        let controller = (NSApp.keyWindow ?? NSApp.mainWindow)?.windowController
+            as? BrowserWindowController ?? controllers.first
+        controller?.contentVC.newFolderAtRoot(sender)
+    }
+
     /// File > Get Info (explicit target — reliable from any focus state).
     @objc func showItemInfo(_ sender: Any?) {
         let controller = (NSApp.keyWindow ?? NSApp.mainWindow)?.windowController

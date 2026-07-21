@@ -116,10 +116,13 @@ you clear the field or navigate.
 - Copy/Paste (Cmd+C/V) — and **Cut/Paste (Cmd+X/V) that actually moves**.
   Paste targets the selected folder when exactly one is selected (including
   the folder you right-clicked); otherwise the folder being viewed.
-- Rename in place, Duplicate, Move to Trash (Cmd+Delete), New Folder
-  (Cmd+Shift+N) targeted at the folder you clicked. Hold **Shift** while
-  right-clicking and Move to Trash becomes **Delete Immediately…** —
-  permanent, bypasses the Trash, always confirms with the exact count.
+- Rename in place, Duplicate, Move to Trash (Cmd+Delete), and
+  **Delete Immediately…** (context menu — permanent, bypasses the Trash,
+  always confirms with the exact count).
+- **New Folder** prompts for the name first. Right-click a folder and it
+  creates *inside* that folder; right-click empty space and it creates in
+  the folder you're viewing (the clicked column, in column view); File →
+  New Folder (Cmd+Shift+N) always creates in the current view's root.
 - **Open With**: default app labeled first, alphabetized list, versions
   shown for duplicate names, multi-selection intersection. Works on folders
   too. **Other…** opens an app picker with an explicit choice: open once,

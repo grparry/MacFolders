@@ -50,13 +50,8 @@ enum FileOperations {
     }
 
     @discardableResult
-    static func newFolder(in directory: URL) throws -> URL {
-        var dest = directory.appendingPathComponent("untitled folder")
-        var counter = 2
-        while FileManager.default.fileExists(atPath: dest.path) {
-            dest = directory.appendingPathComponent("untitled folder \(counter)")
-            counter += 1
-        }
+    static func createFolder(named name: String, in directory: URL) throws -> URL {
+        let dest = directory.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: false)
         return dest
     }

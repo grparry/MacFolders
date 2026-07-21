@@ -125,21 +125,6 @@ final class FileListViewController: NSViewController, DirectoryView,
         expandedURLs().map(\.path)
     }
 
-    func beginRenaming(_ url: URL) {
-        for row in 0..<outlineView.numberOfRows {
-            guard let node = outlineView.item(atRow: row) as? ListNode,
-                  node.item.url == url else { continue }
-            view.window?.makeFirstResponder(outlineView)
-            outlineView.selectRowIndexes([row], byExtendingSelection: false)
-            outlineView.scrollRowToVisible(row)
-            let nameColumn = outlineView.tableColumns.firstIndex {
-                $0.identifier.rawValue == "name"
-            } ?? 0
-            outlineView.editColumn(nameColumn, row: row, with: nil, select: true)
-            return
-        }
-    }
-
     func applySelection(_ urls: Set<URL>) {
         var restore = IndexSet()
         for row in 0..<outlineView.numberOfRows {

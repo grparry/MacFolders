@@ -536,19 +536,44 @@ final class ContentViewController: NSViewController {
         } catch { NSAlert(error: error).runModal() }
     }
 
-    @objc func newFolder(_ sender: Any?) {
+    private func promptForNewFolderName(destination: URL) -> String? {
+        let alert = NSAlert()
+        alert.messageText = "New Folder"
+        alert.informativeText = "Create in “\(FileManager.default.displayName(atPath: destination.path))”"
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.stringValue = "untitled folder"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn,
+              !field.stringValue.isEmpty else { return nil }
+        return field.stringValue
+    }
+
+    private func createFolder(in destination: URL) {
+        guard let name = promptForNewFolderName(destination: destination) else { return }
         do {
-            let created = try FileOperations.newFolder(in: actionDirectory)
-            // Finder flow: the new folder appears selected with its name in
-            // inline edit, ready to type over. (Column view creates in the
-            // clicked column and refreshes via its own watcher.)
-            if actionDirectory == model.directoryURL {
+            let created = try FileOperations.createFolder(named: name, in: destination)
+            if destination == model.directoryURL {
                 try model.reload()
                 currentDirectoryView?.modelDidChange()
                 currentDirectoryView?.applySelection([created])
-                currentDirectoryView?.beginRenaming(created)
             }
+            // Elsewhere (inside a clicked folder, a clicked column) the
+            // directory watchers refresh the views.
         } catch { NSAlert(error: error).runModal() }
+    }
+
+    /// Context menu: a right-clicked folder is the destination; otherwise
+    /// the active directory (the clicked column in column view).
+    @objc func newFolder(_ sender: Any?) {
+        createFolder(in: pasteDestination)
+    }
+
+    /// File menu: always the root of the current view.
+    @objc func newFolderAtRoot(_ sender: Any?) {
+        createFolder(in: model.directoryURL)
     }
 
     @objc func revealInFinder(_ sender: Any?) {
@@ -658,14 +683,11 @@ extension ContentViewController: NSMenuDelegate {
                          action: #selector(renameSelected(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Duplicate",
                          action: #selector(duplicateSelected(_:)), keyEquivalent: "").target = self
-            if NSEvent.modifierFlags.contains(.shift) {
-                menu.addItem(withTitle: "Delete Immediately…",
-                             action: #selector(deleteImmediately(_:)),
-                             keyEquivalent: "").target = self
-            } else {
-                menu.addItem(withTitle: "Move to Trash",
-                             action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
-            }
+            menu.addItem(withTitle: "Move to Trash",
+                         action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
+            menu.addItem(withTitle: "Delete Immediately…",
+                         action: #selector(deleteImmediately(_:)),
+                         keyEquivalent: "").target = self
             menu.addItem(.separator())
             menu.addItem(withTitle: "Cut",
                          action: #selector(cut(_:)), keyEquivalent: "").target = self
