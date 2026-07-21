@@ -62,6 +62,9 @@ final class SearchResultsViewController: NSViewController,
         tableView.dataSource = self
         tableView.delegate = self
         tableView.allowsMultipleSelection = true
+        tableView.registerForDraggedTypes(DropBehavior.registeredTypes)
+        tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
+        tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.rowHeight = 20
         tableView.target = self
@@ -159,6 +162,44 @@ final class SearchResultsViewController: NSViewController,
 
     func numberOfRows(in tableView: NSTableView) -> Int {
         results.count
+    }
+
+    // MARK: Drag & drop — results drag out like any file; drops land only
+    // ON folder rows (a background drop has no honest destination in a
+    // list spanning many folders, so it's refused rather than guessed).
+
+    func tableView(_ tableView: NSTableView,
+                   pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
+        guard results.indices.contains(row) else { return nil }
+        return results[row] as NSURL
+    }
+
+    func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo,
+                   proposedRow row: Int,
+                   proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        guard DropBehavior.canAcceptFileDrop(info),
+              results.indices.contains(row),
+              (try? results[row].resourceValues(
+                forKeys: [.isDirectoryKey]))?.isDirectory == true else { return [] }
+        let dest = results[row]
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.contains(dest),
+              !sources.contains(where: { $0.deletingLastPathComponent() == dest })
+        else { return [] }
+        tableView.setDropRow(row, dropOperation: .on)
+        return DropBehavior.hoverOperation(info)
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
+                   row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+        guard results.indices.contains(row) else { return false }
+        let dest = results[row]
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.isEmpty else {
+            return DropBehavior.receivePromises(from: info, destination: dest)
+        }
+        let operation = DropBehavior.operation(for: sources, destination: dest, info: info)
+        return DropBehavior.perform(operation, sources: sources, destination: dest)
     }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?,

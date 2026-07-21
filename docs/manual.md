@@ -109,6 +109,8 @@ you clear the field or navigate.
 - Results stream in with a live count (capped at 2000, stated when hit),
   support multi-selection, open on double-click (folders navigate), and
   offer Open, Show in Enclosing Folder, Copy Pathname, and Get Info.
+  Results drag out like any file; drops are accepted onto folder rows
+  (a background drop across many folders has no honest destination).
 
 ## Files
 
