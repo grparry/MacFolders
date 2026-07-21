@@ -128,6 +128,7 @@ final class FlatViewController: NSViewController, DirectoryView,
         tableView.menu = contextMenu
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        tableView.registerForDraggedTypes(DropBehavior.registeredTypes)
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -402,6 +403,31 @@ final class FlatViewController: NSViewController, DirectoryView,
 
     func numberOfRows(in tableView: NSTableView) -> Int {
         results.count
+    }
+
+    /// Drops land in the flat ROOT — rows are files from arbitrary
+    /// subfolders, so the tab's folder is the only honest destination.
+    func tableView(_ tableView: NSTableView, validateDrop info: NSDraggingInfo,
+                   proposedRow row: Int,
+                   proposedDropOperation dropOperation: NSTableView.DropOperation) -> NSDragOperation {
+        guard DropBehavior.canAcceptFileDrop(info) else { return [] }
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.contains(root),
+              !sources.contains(where: { $0.deletingLastPathComponent() == root })
+        else { return [] }  // already at the root
+        tableView.setDropRow(-1, dropOperation: .on)
+        return DropBehavior.hoverOperation(info)
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo,
+                   row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+        let sources = DropBehavior.urls(from: info)
+        guard !sources.isEmpty else {
+            return DropBehavior.receivePromises(from: info, destination: root)
+        }
+        let operation = DropBehavior.operation(for: sources, destination: root, info: info)
+        return DropBehavior.perform(operation, sources: sources, destination: root)
+        // The recursive watcher rescans as files land.
     }
 
     func tableView(_ tableView: NSTableView,

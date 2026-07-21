@@ -68,7 +68,8 @@ own flat configuration** — sort and filters persist per folder, with no
 save step, and never inherit between folders. Scans stream in live and
 pause at a threshold (50,000 files) with the real count and a
 Continue/Stop choice, instead of guessing costs up front. The subtree is
-watched recursively, so results stay live.
+watched recursively, so results stay live. Dropping files anywhere on a
+flat view puts them in the flat root (the tab's folder).
 
 ## Sidebar
 

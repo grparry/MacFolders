@@ -1,6 +1,7 @@
 import AppKit
 
 enum DropBehavior {
+
     /// Finder semantics: same volume → move; different volume → copy; Option always copies.
     private static func desired(for sources: [URL], destination: URL) -> NSDragOperation {
         if NSEvent.modifierFlags.contains(.option) { return .copy }
@@ -70,14 +71,21 @@ enum DropBehavior {
 
     /// Types every drop surface should register: real file URLs plus file
     /// promises (browsers, Mail, Photos — the file exists only on request).
+    /// The legacy promise type (kPasteboardTypeFileURLPromise) is NOT in
+    /// NSFilePromiseReceiver.readableDraggedTypes, but Mail still vends it —
+    /// without registering it, Mail drags never reach our views at all.
+    static let legacyPromiseType =
+        NSPasteboard.PasteboardType(kPasteboardTypeFileURLPromise as String)
+
     static var registeredTypes: [NSPasteboard.PasteboardType] {
-        [.fileURL] + NSFilePromiseReceiver.readableDraggedTypes
+        [.fileURL, legacyPromiseType] + NSFilePromiseReceiver.readableDraggedTypes
             .map { NSPasteboard.PasteboardType($0) }
     }
 
     static func hasPromises(_ info: NSDraggingInfo) -> Bool {
         info.draggingPasteboard.canReadObject(
             forClasses: [NSFilePromiseReceiver.self], options: nil)
+            || info.draggingPasteboard.types?.contains(legacyPromiseType) == true
     }
 
     private static let promiseQueue: OperationQueue = {
@@ -93,7 +101,15 @@ enum DropBehavior {
         let receivers = (info.draggingPasteboard.readObjects(
             forClasses: [NSFilePromiseReceiver.self], options: nil)
             as? [NSFilePromiseReceiver]) ?? []
-        guard !receivers.isEmpty else { return false }
+        guard !receivers.isEmpty else {
+            // Legacy-only source (Mail): the old receive API is the only
+            // door such sources answer — it directs them to write into the
+            // destination and returns the promised names.
+            guard info.draggingPasteboard.types?.contains(legacyPromiseType) == true
+            else { return false }
+            let names = info.namesOfPromisedFilesDropped(atDestination: destination) ?? []
+            return !names.isEmpty
+        }
         for receiver in receivers {
             receiver.receivePromisedFiles(atDestination: destination, options: [:],
                                           operationQueue: promiseQueue) { _, error in
