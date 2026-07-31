@@ -453,6 +453,20 @@ final class ContentViewController: NSViewController {
         catch { NSAlert(error: error).runModal() }
     }
 
+    @objc func compressSelected(_ sender: Any?) {
+        let targets = actionTargets
+        guard !targets.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                _ = try FileOperations.compress(targets)
+                // The archive lands in the viewed directory; the watcher
+                // refreshes it. (No manual reload needed.)
+            } catch {
+                DispatchQueue.main.async { NSAlert(error: error).runModal() }
+            }
+        }
+    }
+
     /// Shift+right-click alternate for Move to Trash: permanent, no Trash,
     /// no undo — so it always confirms with the exact count.
     @objc func deleteImmediately(_ sender: Any?) {
@@ -683,6 +697,11 @@ extension ContentViewController: NSMenuDelegate {
                          action: #selector(renameSelected(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Duplicate",
                          action: #selector(duplicateSelected(_:)), keyEquivalent: "").target = self
+            let compressTitle = actionTargets.count == 1
+                ? "Compress “\(actionTargets[0].lastPathComponent)”"
+                : "Compress \(actionTargets.count) Items"
+            menu.addItem(withTitle: compressTitle,
+                         action: #selector(compressSelected(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Move to Trash",
                          action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Delete Immediately…",
