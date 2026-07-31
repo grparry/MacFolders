@@ -122,6 +122,9 @@ you clear the field or navigate.
 - Rename in place, Duplicate, Move to Trash (Cmd+Delete), and
   **Delete Immediately…** (context menu — permanent, bypasses the Trash,
   always confirms with the exact count).
+- **Compress** (context menu) creates a `.zip` beside the originals —
+  `<name>.zip` for one item, `Archive.zip` for several — via `ditto`, so
+  macOS metadata is preserved, with numeric-suffix collision handling.
 - **New Folder** prompts for the name first. Right-click a folder and it
   creates *inside* that folder; right-click empty space and it creates in
   the folder you're viewing (the clicked column, in column view); File →

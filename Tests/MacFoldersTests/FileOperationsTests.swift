@@ -110,4 +110,29 @@ final class FileOperationsTests: XCTestCase {
         XCTAssertThrowsError(try FileOperations.deleteImmediately([file]))
         try FileManager.default.removeItem(at: dir)
     }
+
+    func testCompressSingleItemAndCollisionSuffix() throws {
+        let folder = tempDir.appendingPathComponent("Docs")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data("hi".utf8).write(to: folder.appendingPathComponent("a.txt"))
+
+        let zip1 = try FileOperations.compress([folder])
+        XCTAssertEqual(zip1.lastPathComponent, "Docs.zip")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: zip1.path))
+        let size = (try zip1.resourceValues(forKeys: [.fileSizeKey])).fileSize ?? 0
+        XCTAssertGreaterThan(size, 0)
+
+        let zip2 = try FileOperations.compress([folder])
+        XCTAssertEqual(zip2.lastPathComponent, "Docs 2.zip")
+    }
+
+    func testCompressMultipleItemsMakesArchive() throws {
+        let f1 = tempDir.appendingPathComponent("one.txt")
+        let f2 = tempDir.appendingPathComponent("two.txt")
+        try Data("1".utf8).write(to: f1)
+        try Data("2".utf8).write(to: f2)
+        let zip = try FileOperations.compress([f1, f2])
+        XCTAssertEqual(zip.lastPathComponent, "Archive.zip")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: zip.path))
+    }
 }
