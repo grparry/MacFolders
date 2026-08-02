@@ -396,6 +396,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
+    /// Go > Go to Folder (explicit target — reliable from any focus state).
+    @objc func goToFolderPrompt(_ sender: Any?) {
+        let controller = (NSApp.keyWindow ?? NSApp.mainWindow)?.windowController
+            as? BrowserWindowController ?? controllers.first
+        controller?.promptGoToFolder(sender)
+    }
+
     /// File > New Folder (explicit target — reliable from any focus state).
     @objc func newFolderAtRoot(_ sender: Any?) {
         let controller = (NSApp.keyWindow ?? NSApp.mainWindow)?.windowController

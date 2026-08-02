@@ -122,9 +122,10 @@ enum MainMenu {
         // always in the chain, so this works from any focused subview.
         let goToFolder = goMenu.addItem(
             withTitle: "Go to Folder…",
-            action: #selector(BrowserWindowController.promptGoToFolder(_:)),
+            action: #selector(AppDelegate.goToFolderPrompt(_:)),
             keyEquivalent: "g")
         goToFolder.keyEquivalentModifierMask = [.command, .shift]
+        goToFolder.target = AppDelegate.shared
         goMenu.addItem(.separator())
         let destinations: [(String, String, String)] = [
             ("Home", NSHomeDirectory(), "h"),
