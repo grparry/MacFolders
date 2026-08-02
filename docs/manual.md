@@ -194,3 +194,8 @@ multi-instance runs merge through a lock-protected read-merge-write.
 | Cmd+↑ | Enclosing folder |
 | Cmd+Shift+H/D/O/L/A | Home / Desktop / Documents / Downloads / Applications |
 | Ctrl+Cmd+1…9 | Open workspace 1…9 |
+\n- **Go to Folder…** (Cmd+Shift+G, or the Go menu) prompts for any path —
+  absolute, `~`-relative, or a `file://` URL — and navigates the current
+  tab there. Right-click the new-tab **+** to open a typed path in a new
+  tab instead.
+- **Navigation** — back/forward history, Cmd+↑, Go menu, a toolbar path

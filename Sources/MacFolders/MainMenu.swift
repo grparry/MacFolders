@@ -118,6 +118,14 @@ enum MainMenu {
             keyEquivalent: String(UnicodeScalar(NSUpArrowFunctionKey)!))
         up.keyEquivalentModifierMask = [.command]
         goMenu.addItem(.separator())
+        // Responder-chain target: the key window's BrowserWindowController is
+        // always in the chain, so this works from any focused subview.
+        let goToFolder = goMenu.addItem(
+            withTitle: "Go to Folder…",
+            action: #selector(BrowserWindowController.promptGoToFolder(_:)),
+            keyEquivalent: "g")
+        goToFolder.keyEquivalentModifierMask = [.command, .shift]
+        goMenu.addItem(.separator())
         let destinations: [(String, String, String)] = [
             ("Home", NSHomeDirectory(), "h"),
             ("Desktop", NSHomeDirectory() + "/Desktop", "d"),

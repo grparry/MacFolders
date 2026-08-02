@@ -90,6 +90,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let y = event.locationInWindow.y
             let bandBottom = window.contentLayoutRect.maxY
             guard y > bandBottom, y <= bandBottom + 28 else { return event }
+            // The new-tab "+" sits at the far right of the tab band; a
+            // right-click there prompts for a folder to open in a new tab.
+            if event.locationInWindow.x >= window.frame.width - 32,
+               let controller = window.windowController as? BrowserWindowController {
+                controller.promptNewTabAtFolder(nil)
+                return nil
+            }
             // Native tabs are equal-width across the window.
             let tabs = group.windows
             let index = min(max(Int(event.locationInWindow.x
