@@ -134,6 +134,7 @@ you clear the field or navigate.
   too. **Other…** opens an app picker with an explicit choice: open once,
   always for this file, or always for all files of the type — the last one
   changes the system-wide default (macOS shows its own confirmation).
+- Opening the **Trash** shows its contents in a tab whose context menu offers **Empty Trash…** (with the same confirmation) in place of Move to Trash.
 - **Get Info** (Cmd+I): kind, size, location, dates, Quick Look preview,
   symlink target, and *editable* POSIX permissions.
 - **Copy Pathname** everywhere: content views (multi-selection = one path

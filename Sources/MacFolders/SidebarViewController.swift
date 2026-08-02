@@ -37,31 +37,9 @@ final class SidebarViewController: NSViewController,
         SidebarDefaults.favoritePaths().map(URL.init(fileURLWithPath:))
     }
 
-    static let trashURL = FileManager.default.urls(
-        for: .trashDirectory, in: .userDomainMask)[0]
+    static let trashURL = Trash.homeURL
 
-    /// Finder's Trash is several trashes merged: the home trash, iCloud
-    /// Drive's ".Trash" (Recently Deleted), and each volume's ".Trashes/uid".
-    static func trashDirectories() -> [URL] {
-        var dirs = [trashURL]
-        if let icloud = CloudFiles.iCloudDriveURL() {
-            let cloudTrash = icloud.appendingPathComponent(".Trash")
-            if FileManager.default.fileExists(atPath: cloudTrash.path) {
-                dirs.append(cloudTrash)
-            }
-        }
-        let uid = getuid()
-        let volumes = FileManager.default.mountedVolumeURLs(
-            includingResourceValuesForKeys: nil,
-            options: [.skipHiddenVolumes]) ?? []
-        for volume in volumes where volume.path != "/" {
-            let volumeTrash = volume.appendingPathComponent(".Trashes/\(uid)")
-            if FileManager.default.fileExists(atPath: volumeTrash.path) {
-                dirs.append(volumeTrash)
-            }
-        }
-        return dirs
-    }
+    static func trashDirectories() -> [URL] { Trash.directories() }
 
     /// The workspace of the window this sidebar lives in.
     private var windowWorkspaceID: UUID {
@@ -584,38 +562,7 @@ extension SidebarViewController: NSMenuDelegate {
     }
 
     @objc private func emptyTrash(_ sender: NSMenuItem) {
-        // Read errors surface — a permission failure must never masquerade
-        // as an empty trash.
-        var items: [URL] = []
-        for dir in Self.trashDirectories() {
-            do {
-                items += try FileManager.default.contentsOfDirectory(
-                    at: dir, includingPropertiesForKeys: nil)
-            } catch {
-                NSAlert(error: error).runModal()
-                return
-            }
-        }
-        guard !items.isEmpty else {
-            let alert = NSAlert()
-            alert.messageText = "The Trash is already empty."
-            alert.runModal()
-            return
-        }
-        let alert = NSAlert()
-        alert.messageText = "Empty the Trash?"
-        alert.informativeText = items.count == 1
-            ? "1 item will be permanently erased. This cannot be undone."
-            : "\(items.count) items will be permanently erased. This cannot be undone."
-        alert.addButton(withTitle: "Empty Trash")
-        alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        do {
-            for item in items {
-                try FileManager.default.removeItem(at: item)
-            }
-        } catch { NSAlert(error: error).runModal() }
-        rebuildEntries()  // trash icon back to empty
+        if Trash.empty() { rebuildEntries() }  // trash icon back to empty
     }
 
     @objc private func copyPathname(_ sender: NSMenuItem) {
