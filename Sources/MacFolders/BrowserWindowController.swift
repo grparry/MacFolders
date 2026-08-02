@@ -14,7 +14,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     var lastTabGroupID: ObjectIdentifier?
     let contentVC: ContentViewController
     let sidebarVC = SidebarViewController()
-    private let splitVC: NSSplitViewController
+    private let splitVC: SidebarSplitViewController
     private(set) var currentURL: URL
     private var backHistory: [URL] = []
     private var forwardHistory: [URL] = []
@@ -28,7 +28,7 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         currentURL = url
         contentVC = ContentViewController(url: url, viewMode: viewMode)
 
-        let split = NSSplitViewController()
+        let split = SidebarSplitViewController()
         splitVC = split
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarVC)
         sidebarItem.minimumThickness = 140
@@ -41,6 +41,10 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
+        // We fully restore window/tab/sidebar state ourselves; AppKit's own UI
+        // state restoration otherwise competes with our sidebar-width restore
+        // and wins after layout, so the saved width never sticks.
+        window.isRestorable = false
         window.contentViewController = split
         window.tabbingMode = .preferred
         // One global identifier so tabs can be dragged between ANY windows,
@@ -235,7 +239,12 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func applySidebarWidth(_ width: CGFloat) {
-        splitVC.splitView.setPosition(width, ofDividerAt: 0)
+        // The sidebar-style split item re-asserts its width on every layout
+        // pass, so a one-shot setPosition is overridden. Hand the value to the
+        // split controller, which applies it inside its own viewDidLayout (real
+        // bounds, correct timing) and then stops — so a later user drag wins.
+        splitVC.pendingSidebarWidth = min(max(width, 140), 300)
+        splitVC.view.needsLayout = true
     }
 
     @objc private func splitDidResize(_ notification: Notification) {
@@ -454,5 +463,21 @@ extension BrowserWindowController: NSMenuDelegate {
         guard let url = sender.representedObject as? URL,
               url != currentURL else { return }
         navigate(to: url)
+    }
+}
+
+/// Split controller that applies a restored sidebar width once the view has
+/// real bounds. Restoring earlier (before layout) is silently dropped, and
+/// re-applying on every layout would fight the user's drags — so the pending
+/// width is consumed exactly once.
+final class SidebarSplitViewController: NSSplitViewController {
+    var pendingSidebarWidth: CGFloat?
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        if let width = pendingSidebarWidth, splitView.bounds.width > width {
+            splitView.setPosition(width, ofDividerAt: 0)
+            pendingSidebarWidth = nil
+        }
     }
 }
