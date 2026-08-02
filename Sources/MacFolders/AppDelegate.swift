@@ -366,7 +366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.sidebarVC.recentDocuments = workspace.recentDocuments.map(URL.init(fileURLWithPath:))
     }
 
-    private func refreshSidebars() {
+    func refreshSidebars() {
         for controller in controllers {
             applySidebarState(to: controller)
         }
