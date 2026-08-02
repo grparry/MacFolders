@@ -296,6 +296,50 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         navigate(to: URL(fileURLWithPath: path))
     }
 
+    /// Finder-style Go to Folder (Cmd+Shift+G): prompt for any path and
+    /// navigate the current tab there.
+    @objc func promptGoToFolder(_ sender: Any?) {
+        guard let url = promptForFolder(prompt: "Go") else { return }
+        navigate(to: url)
+    }
+
+    /// Right-click the new-tab "+": prompt for a path and open it in a new tab.
+    @objc func promptNewTabAtFolder(_ sender: Any?) {
+        guard let url = promptForFolder(prompt: "New Tab") else { return }
+        openNewTab(at: url)
+    }
+
+    /// Shared path prompt. Accepts absolute paths, ~ expansion, and
+    /// file:// URLs; validates the target is an existing directory,
+    /// reporting the failure rather than navigating nowhere.
+    private func promptForFolder(prompt button: String) -> URL? {
+        let alert = NSAlert()
+        alert.messageText = "Go to the folder:"
+        alert.addButton(withTitle: button)
+        alert.addButton(withTitle: "Cancel")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        field.placeholderString = "/path/to/folder  or  ~/Documents"
+        field.stringValue = currentURL.path
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+
+        var text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if text.hasPrefix("file://"), let u = URL(string: text) { text = u.path }
+        let expanded = (text as NSString).expandingTildeInPath
+        let url = URL(fileURLWithPath: expanded)
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+              isDir.boolValue else {
+            let error = NSAlert()
+            error.messageText = "The folder “\(expanded)” can’t be found."
+            error.runModal()
+            return nil
+        }
+        return url
+    }
+
 }
 
 extension BrowserWindowController: NSToolbarDelegate {
