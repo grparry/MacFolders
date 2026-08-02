@@ -317,7 +317,9 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         alert.messageText = "Go to the folder:"
         alert.addButton(withTitle: button)
         alert.addButton(withTitle: "Cancel")
-        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        // Wide enough that long paths are readable without scrolling; the
+        // accessory view's width drives the whole alert's width.
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 560, height: 24))
         field.placeholderString = "/path/to/folder  or  ~/Documents"
         field.stringValue = currentURL.path
         alert.accessoryView = field
