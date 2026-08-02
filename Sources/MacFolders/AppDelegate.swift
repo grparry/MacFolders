@@ -51,7 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NetworkBrowser.shared.start()
         workspacesMenuController = WorkspacesMenuController(manager: workspaceManager)
         NSApp.mainMenu = MainMenu.build(workspacesMenu: workspacesMenuController.menu)
-        workspaceManager.onStateChanged = { [weak self] in self?.refreshSidebars() }
+        workspaceManager.onStateChanged = { [weak self] in
+            self?.refreshSidebars()
+            // A rename changes workspace names; retitle every open tab so
+            // "workspace — folder" updates live. (Dock menu is already live —
+            // it rebuilds from current state each open.)
+            self?.controllers.forEach { $0.refreshTitle() }
+        }
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowBecameKey(_:)),
             name: NSWindow.didBecomeKeyNotification, object: nil)

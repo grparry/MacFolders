@@ -168,6 +168,10 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         navigate(to: parent)
     }
 
+    /// Re-derive the title bar from the current workspace name (called when a
+    /// workspace is renamed, so every open tab retitles immediately).
+    func refreshTitle() { updateTitle() }
+
     private func updateTitle() {
         // displayName localizes system folders ("iCloud Drive" instead of
         // "com~apple~CloudDocs") and falls back to the last path component.
