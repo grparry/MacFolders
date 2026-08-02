@@ -35,6 +35,9 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
         sidebarItem.maximumThickness = 300
         split.addSplitViewItem(sidebarItem)
         split.addSplitViewItem(NSSplitViewItem(viewController: contentVC))
+        // New tabs/windows open with the sidebar at its max width; restore
+        // overrides this with a saved width when there is one.
+        split.pendingSidebarWidth = sidebarItem.maximumThickness
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 960, height: 620),
