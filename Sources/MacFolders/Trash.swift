@@ -34,6 +34,18 @@ enum Trash {
     /// removed — common when an app is trashed while running, or when it left
     /// a login-item / SMAppService helper running from inside the bundle.
     private static func reason(for url: URL, error: Error) -> String {
+        // Owned by another user (commonly root, for anything installed with
+        // admin rights) — a user-level delete can't remove it no matter what,
+        // and no process is involved. Checked first: it's the real cause even
+        // when nothing holds the item.
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let owner = attrs[.ownerAccountID] as? NSNumber,
+           owner.uint32Value != getuid() {
+            let who = attrs[.ownerAccountName] as? String ?? "user \(owner.uint32Value)"
+            return "owned by \(who) — needs administrator privileges to delete "
+                + "(quit any running copy, then in Terminal: "
+                + "sudo rm -rf \"\(url.path)\")"
+        }
         guard url.pathExtension == "app" else { return error.localizedDescription }
         let holders = holdingProcesses(of: url)
         if !holders.isEmpty {
