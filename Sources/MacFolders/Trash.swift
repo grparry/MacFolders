@@ -29,22 +29,18 @@ enum Trash {
         return dirs
     }
 
-    /// A human, actionable reason a trashed item couldn't be deleted. An app
-    /// bundle whose executables are still mapped by a running process can't be
-    /// removed — common when an app is trashed while running, or when it left
-    /// a login-item / SMAppService helper running from inside the bundle.
+    /// Why an item couldn't be deleted — purely factual. If any process holds
+    /// it open, name those processes with their exact pids (that's what the
+    /// user needs to kill); otherwise report the system's own error verbatim.
+    /// No guesses, no remediation instructions.
     private static func reason(for url: URL, error: Error) -> String {
-        guard url.pathExtension == "app" else { return error.localizedDescription }
         let holders = holdingProcesses(of: url)
-        if !holders.isEmpty {
-            var list = holders.prefix(6)
-                .map { "\($0.name) (pid \($0.pid))" }
-                .joined(separator: ", ")
-            if holders.count > 6 { list += ", and \(holders.count - 6) more" }
-            return "still in use by \(list) — quit it, then empty the Trash again"
-        }
-        return "still in use — quit the app and any background helper it left "
-            + "running, then empty the Trash again"
+        guard !holders.isEmpty else { return error.localizedDescription }
+        var list = holders.prefix(8)
+            .map { "\($0.name) (pid \($0.pid))" }
+            .joined(separator: ", ")
+        if holders.count > 8 { list += ", and \(holders.count - 8) more" }
+        return "held by \(list)"
     }
 
     /// Processes holding files open inside `url` (via lsof), so the report can
@@ -55,7 +51,12 @@ enum Trash {
         task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
         // +c0: full command names (default truncates to 9 chars).
         // -F: machine-readable pid (p) + command (c) fields.
-        task.arguments = ["+c0", "-Fpc", "+D", url.path]
+        // +D recurses a bundle/directory; a plain path arg handles a file.
+        let isDir = (try? url.resourceValues(
+            forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+        task.arguments = isDir
+            ? ["+c0", "-Fpc", "+D", url.path]
+            : ["+c0", "-Fpc", "--", url.path]
         let out = Pipe()
         task.standardOutput = out
         // nullDevice, not an undrained Pipe: lsof's permission warnings could
