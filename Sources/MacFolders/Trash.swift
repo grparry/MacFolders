@@ -34,13 +34,26 @@ enum Trash {
     /// user needs to kill); otherwise report the system's own error verbatim.
     /// No guesses, no remediation instructions.
     private static func reason(for url: URL, error: Error) -> String {
+        // A process holding the item open is the thing to kill — name them
+        // with exact pids.
         let holders = holdingProcesses(of: url)
-        guard !holders.isEmpty else { return error.localizedDescription }
-        var list = holders.prefix(8)
-            .map { "\($0.name) (pid \($0.pid))" }
-            .joined(separator: ", ")
-        if holders.count > 8 { list += ", and \(holders.count - 8) more" }
-        return "held by \(list)"
+        if !holders.isEmpty {
+            var list = holders.prefix(8)
+                .map { "\($0.name) (pid \($0.pid))" }
+                .joined(separator: ", ")
+            if holders.count > 8 { list += ", and \(holders.count - 8) more" }
+            return "held by \(list)"
+        }
+        // Nothing holds it — state the real reason rather than a bare errno.
+        // Owned by another user (commonly root, for anything installed with
+        // admin rights) is the usual cause, and there's no process to kill.
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+           let owner = attrs[.ownerAccountID] as? NSNumber,
+           owner.uint32Value != getuid() {
+            let who = attrs[.ownerAccountName] as? String ?? "user \(owner.uint32Value)"
+            return "no process is holding it — it's owned by \(who)"
+        }
+        return error.localizedDescription
     }
 
     /// Processes holding files open inside `url` (via lsof), so the report can
@@ -49,14 +62,13 @@ enum Trash {
     private static func holdingProcesses(of url: URL) -> [(pid: Int32, name: String)] {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-        // +c0: full command names (default truncates to 9 chars).
-        // -F: machine-readable pid (p) + command (c) fields.
-        // +D recurses a bundle/directory; a plain path arg handles a file.
-        let isDir = (try? url.resourceValues(
-            forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-        task.arguments = isDir
-            ? ["+c0", "-Fpc", "+D", url.path]
-            : ["+c0", "-Fpc", "--", url.path]
+        // GLOBAL list (no +D): +D would make lsof READ the item's directory,
+        // which under ~/.Trash is TCC-restricted for a spawned helper even
+        // though the app itself has Full Disk Access — so it silently finds
+        // nothing. The global list comes from kernel file tables (no directory
+        // read), and we match the open-file paths ourselves.
+        // +c0: full command names. -Fpcn: pid, command, and name fields.
+        task.arguments = ["+c0", "-Fpcn"]
         let out = Pipe()
         task.standardOutput = out
         // nullDevice, not an undrained Pipe: lsof's permission warnings could
@@ -66,15 +78,27 @@ enum Trash {
         let data = out.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         guard let text = String(data: data, encoding: .utf8) else { return [] }
+
+        // Match both the plain path and the firmlink form lsof may report.
+        let prefix = url.standardizedFileURL.path
+        let dataPrefix = "/System/Volumes/Data" + prefix
+        func holds(_ path: String) -> Bool {
+            path == prefix || path.hasPrefix(prefix + "/")
+                || path == dataPrefix || path.hasPrefix(dataPrefix + "/")
+        }
+
         var result: [(pid: Int32, name: String)] = []
         var pid: Int32?
+        var name = ""
         for line in text.split(separator: "\n") {
-            let value = line.dropFirst()
+            let value = String(line.dropFirst())
             switch line.first {
-            case "p": pid = Int32(value)
-            case "c":
-                if let pid, !result.contains(where: { $0.pid == pid }) {
-                    result.append((pid, String(value)))
+            case "p": pid = Int32(value); name = ""
+            case "c": name = value
+            case "n":
+                if let pid, holds(value),
+                   !result.contains(where: { $0.pid == pid }) {
+                    result.append((pid, name))
                 }
             default: break
             }
