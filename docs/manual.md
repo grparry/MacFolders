@@ -80,9 +80,13 @@ Ordered like Finder: **Locations**, **iCloud**, **Favorites**,
   drives, disk images, network mounts), SMB servers discovered on the local
   network (click to connect via the system dialog; the mounted share then
   appears as a volume), and **Trash**.
-- **Trash**: browseable; right-click for **Empty Trash…**, which always
-  confirms with the exact item count and empties every trash Finder would —
-  home, iCloud Drive's Recently Deleted, and per-volume trashes. Requires
+- **Trash**: browseable; **Empty Trash…** is reachable three ways — the
+  sidebar Trash's right-click menu, the context menu inside a Trash tab (in
+  place of Move to Trash), and the File menu (Cmd+Shift+Delete, enabled only
+  while a Trash tab is focused). It always confirms with the exact item count
+  and empties every trash Finder would — home, iCloud Drive's Recently
+  Deleted, and per-volume trashes. Emptying continues past any item it can't
+  delete (e.g. a permission error) and reports which were skipped. Requires
   Full Disk Access (see Permissions).
 - **Favorites** are per-workspace. Drag folders in (at any position);
   Option-drop adds to every workspace. Right-click for Open in New Tab,

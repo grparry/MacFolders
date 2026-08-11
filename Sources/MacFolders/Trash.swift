@@ -63,12 +63,26 @@ enum Trash {
         alert.addButton(withTitle: "Empty Trash")
         alert.addButton(withTitle: "Cancel")
         guard alert.runModal() == .alertFirstButtonReturn else { return false }
-        do {
-            for item in items {
+        // Delete every item; a failure on one (e.g. a permission error on a
+        // System-managed item) must not abort the rest. Failures are still
+        // surfaced — collected and reported, never swallowed.
+        var failures: [(name: String, reason: String)] = []
+        for item in items {
+            do {
                 try FileManager.default.removeItem(at: item)
+            } catch {
+                failures.append((item.lastPathComponent, error.localizedDescription))
             }
-        } catch {
-            NSAlert(error: error).runModal()
+        }
+        if !failures.isEmpty {
+            let report = NSAlert()
+            report.messageText = failures.count == 1
+                ? "1 item couldn't be deleted; the rest of the Trash was emptied."
+                : "\(failures.count) items couldn't be deleted; the rest of the Trash was emptied."
+            report.informativeText = failures.prefix(8)
+                .map { "\($0.name): \($0.reason)" }
+                .joined(separator: "\n")
+            report.runModal()
         }
         return true
     }

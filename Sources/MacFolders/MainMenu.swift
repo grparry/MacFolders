@@ -46,6 +46,15 @@ enum MainMenu {
                                      action: #selector(ContentViewController.trashSelected(_:)),
                                      keyEquivalent: "\u{8}") // Cmd+Delete
         trash.keyEquivalentModifierMask = [.command]
+        // Empty Trash (Cmd+Shift+Delete, like Finder) — enabled only when the
+        // current tab is the Trash, the counterpart to Move to Trash being
+        // disabled there. Explicit AppDelegate target with its own validation.
+        let emptyTrash = fileMenu.addItem(
+            withTitle: "Empty Trash…",
+            action: #selector(AppDelegate.emptyTrashFromMenu(_:)),
+            keyEquivalent: "\u{8}")
+        emptyTrash.keyEquivalentModifierMask = [.command, .shift]
+        emptyTrash.target = AppDelegate.shared
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close Window",
                          action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
