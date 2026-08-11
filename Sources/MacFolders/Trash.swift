@@ -29,6 +29,23 @@ enum Trash {
         return dirs
     }
 
+    /// A human, actionable reason a trashed item couldn't be deleted. An app
+    /// bundle whose executables are still mapped by a running process can't be
+    /// removed — common when an app is trashed while running, or when it left
+    /// a login-item / SMAppService helper running from inside the bundle.
+    private static func reason(for url: URL, error: Error) -> String {
+        guard url.pathExtension == "app" else { return error.localizedDescription }
+        let path = url.standardizedFileURL.path
+        let running = NSWorkspace.shared.runningApplications.contains {
+            guard let b = $0.bundleURL?.standardizedFileURL.path else { return false }
+            return b == path || b.hasPrefix(path + "/")
+        }
+        return running
+            ? "still running — quit it, then empty the Trash again"
+            : "still in use — quit the app and any background helper it left "
+                + "running, then empty the Trash again"
+    }
+
     /// True when `url` is the browsable home Trash (what a Trash tab shows).
     static func isTrashLocation(_ url: URL) -> Bool {
         url.standardizedFileURL.path == homeURL.standardizedFileURL.path
@@ -71,7 +88,7 @@ enum Trash {
             do {
                 try FileManager.default.removeItem(at: item)
             } catch {
-                failures.append((item.lastPathComponent, error.localizedDescription))
+                failures.append((item.lastPathComponent, reason(for: item, error: error)))
             }
         }
         if !failures.isEmpty {
