@@ -467,6 +467,15 @@ final class ContentViewController: NSViewController {
         }
     }
 
+    /// Empty Trash from a Trash tab's context menu. The directory watcher
+    /// refreshes this view as items vanish; the sidebar's trash icon is
+    /// refreshed too.
+    @objc func emptyTrashHere(_ sender: Any?) {
+        if Trash.empty() {
+            AppDelegate.shared.refreshSidebars()
+        }
+    }
+
     /// Shift+right-click alternate for Move to Trash: permanent, no Trash,
     /// no undo — so it always confirms with the exact count.
     @objc func deleteImmediately(_ sender: Any?) {
@@ -702,11 +711,20 @@ extension ContentViewController: NSMenuDelegate {
                 : "Compress \(actionTargets.count) Items"
             menu.addItem(withTitle: compressTitle,
                          action: #selector(compressSelected(_:)), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "Move to Trash",
-                         action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
-            menu.addItem(withTitle: "Delete Immediately…",
-                         action: #selector(deleteImmediately(_:)),
-                         keyEquivalent: "").target = self
+            if Trash.isTrashLocation(model.directoryURL) {
+                menu.addItem(withTitle: "Empty Trash…",
+                             action: #selector(emptyTrashHere(_:)),
+                             keyEquivalent: "").target = self
+                menu.addItem(withTitle: "Delete Immediately…",
+                             action: #selector(deleteImmediately(_:)),
+                             keyEquivalent: "").target = self
+            } else {
+                menu.addItem(withTitle: "Move to Trash",
+                             action: #selector(trashSelected(_:)), keyEquivalent: "").target = self
+                menu.addItem(withTitle: "Delete Immediately…",
+                             action: #selector(deleteImmediately(_:)),
+                             keyEquivalent: "").target = self
+            }
             menu.addItem(.separator())
             menu.addItem(withTitle: "Cut",
                          action: #selector(cut(_:)), keyEquivalent: "").target = self
@@ -720,6 +738,11 @@ extension ContentViewController: NSMenuDelegate {
         menu.addItem(withTitle: "New Folder",
                      action: #selector(newFolder(_:)), keyEquivalent: "").target = self
         if selection.isEmpty {
+            if Trash.isTrashLocation(model.directoryURL) {
+                menu.addItem(withTitle: "Empty Trash…",
+                             action: #selector(emptyTrashHere(_:)),
+                             keyEquivalent: "").target = self
+            }
             menu.addItem(withTitle: "Copy Pathname",
                          action: #selector(copyPathname(_:)), keyEquivalent: "").target = self
             menu.addItem(withTitle: "Get Info",

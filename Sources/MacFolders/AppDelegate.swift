@@ -366,7 +366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.sidebarVC.recentDocuments = workspace.recentDocuments.map(URL.init(fileURLWithPath:))
     }
 
-    private func refreshSidebars() {
+    func refreshSidebars() {
         for controller in controllers {
             applySidebarState(to: controller)
         }
@@ -399,7 +399,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if item.action == #selector(toggleHiddenFiles(_:)) {
             item.state = ContentViewController.showHiddenFiles ? .on : .off
         }
+        if item.action == #selector(emptyTrashFromMenu(_:)) {
+            // Enabled only when the key window's current tab is the Trash.
+            let url = (NSApp.keyWindow?.windowController
+                as? BrowserWindowController)?.currentURL
+            return url.map(Trash.isTrashLocation) ?? false
+        }
         return true
+    }
+
+    /// File > Empty Trash (enabled only in a Trash tab; see validateMenuItem).
+    @objc func emptyTrashFromMenu(_ sender: Any?) {
+        if Trash.empty() { refreshSidebars() }
     }
 
     /// Go > Go to Folder (explicit target — reliable from any focus state).
