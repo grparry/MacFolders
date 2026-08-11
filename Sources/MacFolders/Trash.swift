@@ -35,15 +35,50 @@ enum Trash {
     /// a login-item / SMAppService helper running from inside the bundle.
     private static func reason(for url: URL, error: Error) -> String {
         guard url.pathExtension == "app" else { return error.localizedDescription }
-        let path = url.standardizedFileURL.path
-        let running = NSWorkspace.shared.runningApplications.contains {
-            guard let b = $0.bundleURL?.standardizedFileURL.path else { return false }
-            return b == path || b.hasPrefix(path + "/")
+        let holders = holdingProcesses(of: url)
+        if !holders.isEmpty {
+            var list = holders.prefix(6)
+                .map { "\($0.name) (pid \($0.pid))" }
+                .joined(separator: ", ")
+            if holders.count > 6 { list += ", and \(holders.count - 6) more" }
+            return "still in use by \(list) — quit it, then empty the Trash again"
         }
-        return running
-            ? "still running — quit it, then empty the Trash again"
-            : "still in use — quit the app and any background helper it left "
-                + "running, then empty the Trash again"
+        return "still in use — quit the app and any background helper it left "
+            + "running, then empty the Trash again"
+    }
+
+    /// Processes holding files open inside `url` (via lsof), so the report can
+    /// name the exact pid — including background helpers that aren't listed as
+    /// running applications.
+    private static func holdingProcesses(of url: URL) -> [(pid: Int32, name: String)] {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        // +c0: full command names (default truncates to 9 chars).
+        // -F: machine-readable pid (p) + command (c) fields.
+        task.arguments = ["+c0", "-Fpc", "+D", url.path]
+        let out = Pipe()
+        task.standardOutput = out
+        // nullDevice, not an undrained Pipe: lsof's permission warnings could
+        // otherwise fill the stderr buffer and deadlock waitUntilExit.
+        task.standardError = FileHandle.nullDevice
+        do { try task.run() } catch { return [] }
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        task.waitUntilExit()
+        guard let text = String(data: data, encoding: .utf8) else { return [] }
+        var result: [(pid: Int32, name: String)] = []
+        var pid: Int32?
+        for line in text.split(separator: "\n") {
+            let value = line.dropFirst()
+            switch line.first {
+            case "p": pid = Int32(value)
+            case "c":
+                if let pid, !result.contains(where: { $0.pid == pid }) {
+                    result.append((pid, String(value)))
+                }
+            default: break
+            }
+        }
+        return result
     }
 
     /// True when `url` is the browsable home Trash (what a Trash tab shows).
