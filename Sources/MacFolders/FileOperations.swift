@@ -5,7 +5,8 @@ enum FileOperations {
     static func copy(_ sources: [URL], to directory: URL) throws -> [URL] {
         var results: [URL] = []
         for source in sources {
-            let dest = directory.appendingPathComponent(source.lastPathComponent)
+            // Name collision → Finder-style " copy" suffix instead of failing.
+            let dest = nonCollidingURL(named: source.lastPathComponent, in: directory)
             try FileManager.default.copyItem(at: source, to: dest)
             results.append(dest)
         }
@@ -16,11 +17,38 @@ enum FileOperations {
     static func move(_ sources: [URL], to directory: URL) throws -> [URL] {
         var results: [URL] = []
         for source in sources {
-            let dest = directory.appendingPathComponent(source.lastPathComponent)
+            // Moving into the folder it's already in is a no-op, not a rename.
+            if source.deletingLastPathComponent().standardizedFileURL
+                == directory.standardizedFileURL {
+                results.append(source)
+                continue
+            }
+            // Name collision → keep both via a " copy" suffix instead of failing.
+            let dest = nonCollidingURL(named: source.lastPathComponent, in: directory)
             try FileManager.default.moveItem(at: source, to: dest)
             results.append(dest)
         }
         return results
+    }
+
+    /// A destination URL in `directory` for an item named `name`: the name
+    /// as-is when free, otherwise Finder's " copy", " copy 2", … suffix.
+    static func nonCollidingURL(named name: String, in directory: URL) -> URL {
+        let asIs = directory.appendingPathComponent(name)
+        guard FileManager.default.fileExists(atPath: asIs.path) else { return asIs }
+        let ext = (name as NSString).pathExtension
+        let base = (name as NSString).deletingPathExtension
+        func candidate(_ suffix: String) -> URL {
+            let n = ext.isEmpty ? "\(base)\(suffix)" : "\(base)\(suffix).\(ext)"
+            return directory.appendingPathComponent(n)
+        }
+        var dest = candidate(" copy")
+        var counter = 2
+        while FileManager.default.fileExists(atPath: dest.path) {
+            dest = candidate(" copy \(counter)")
+            counter += 1
+        }
+        return dest
     }
 
     @discardableResult
@@ -32,19 +60,10 @@ enum FileOperations {
 
     @discardableResult
     static func duplicate(_ url: URL) throws -> URL {
-        let dir = url.deletingLastPathComponent()
-        let ext = url.pathExtension
-        let base = url.deletingPathExtension().lastPathComponent
-        func candidate(_ suffix: String) -> URL {
-            let name = ext.isEmpty ? "\(base)\(suffix)" : "\(base)\(suffix).\(ext)"
-            return dir.appendingPathComponent(name)
-        }
-        var dest = candidate(" copy")
-        var counter = 2
-        while FileManager.default.fileExists(atPath: dest.path) {
-            dest = candidate(" copy \(counter)")
-            counter += 1
-        }
+        // The original name is always taken (same folder), so nonCollidingURL
+        // yields "<name> copy", "<name> copy 2", … just like Finder's Duplicate.
+        let dest = nonCollidingURL(named: url.lastPathComponent,
+                                   in: url.deletingLastPathComponent())
         try FileManager.default.copyItem(at: url, to: dest)
         return dest
     }
