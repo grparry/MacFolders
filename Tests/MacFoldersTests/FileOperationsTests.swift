@@ -44,11 +44,12 @@ final class FileOperationsTests: XCTestCase {
         XCTAssertFalse(fm.fileExists(atPath: file.path)) // original gone
     }
 
-    func testCopyCollisionThrows() throws {
+    func testCopyCollisionAppendsSuffix() throws {
         let file = try makeFile("a.txt")
         let dest = try makeDir("dest")
         _ = try makeFile("a.txt", in: dest)
-        XCTAssertThrowsError(try FileOperations.copy([file], to: dest))
+        let out = try FileOperations.copy([file], to: dest)
+        XCTAssertEqual(out.first?.lastPathComponent, "a copy.txt")
     }
 
     func testRename() throws {
@@ -134,5 +135,35 @@ final class FileOperationsTests: XCTestCase {
         let zip = try FileOperations.compress([f1, f2])
         XCTAssertEqual(zip.lastPathComponent, "Archive.zip")
         XCTAssertTrue(FileManager.default.fileExists(atPath: zip.path))
+    }
+
+    func testCopyAppendsCopySuffixOnCollision() throws {
+        let dst = tempDir.appendingPathComponent("dst")
+        try FileManager.default.createDirectory(at: dst, withIntermediateDirectories: true)
+        let src = tempDir.appendingPathComponent("note.txt")
+        try Data("a".utf8).write(to: src)
+        try Data("b".utf8).write(to: dst.appendingPathComponent("note.txt"))  // pre-existing
+
+        let first = try FileOperations.copy([src], to: dst)
+        XCTAssertEqual(first.first?.lastPathComponent, "note copy.txt")
+        let second = try FileOperations.copy([src], to: dst)
+        XCTAssertEqual(second.first?.lastPathComponent, "note copy 2.txt")
+    }
+
+    func testCopyKeepsNameWhenNoCollision() throws {
+        let dst = tempDir.appendingPathComponent("empty")
+        try FileManager.default.createDirectory(at: dst, withIntermediateDirectories: true)
+        let src = tempDir.appendingPathComponent("solo.txt")
+        try Data("x".utf8).write(to: src)
+        let out = try FileOperations.copy([src], to: dst)
+        XCTAssertEqual(out.first?.lastPathComponent, "solo.txt")
+    }
+
+    func testMoveIntoSameFolderIsNoOp() throws {
+        let src = tempDir.appendingPathComponent("stay.txt")
+        try Data("x".utf8).write(to: src)
+        let out = try FileOperations.move([src], to: tempDir)
+        XCTAssertEqual(out.first?.lastPathComponent, "stay.txt")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: src.path))
     }
 }
