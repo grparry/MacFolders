@@ -2,9 +2,18 @@ import AppKit
 
 final class DoubleClickCollectionView: NSCollectionView {
     var onDoubleClick: (() -> Void)?
+    var onOpenSelection: (() -> Void)?
     override func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
         if event.clickCount == 2 { onDoubleClick?() }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36 || event.keyCode == 76 {   // Return / keypad Enter
+            onOpenSelection?()
+        } else {
+            super.keyDown(with: event)
+        }
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
@@ -130,6 +139,10 @@ final class IconViewController: NSViewController, DirectoryView,
         collectionView.onDoubleClick = { [weak self] in
             guard let self, let url = self.selectedURLs.first else { return }
             self.onOpen?(url)
+        }
+        collectionView.onOpenSelection = { [weak self] in
+            guard let self else { return }
+            for url in self.selectedURLs { self.onOpen?(url) }
         }
         scrollView.documentView = collectionView
         scrollView.hasVerticalScroller = true

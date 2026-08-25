@@ -54,10 +54,13 @@ final class ColumnTableView: NSTableView {
         return super.menu(for: event)
     }
 
+    var onOpenSelection: (() -> Void)?
+
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 123: onNavigateLeft?()   // ←
         case 124: onNavigateRight?()  // →
+        case 36, 76: onOpenSelection?()  // Return / keypad Enter
         default: super.keyDown(with: event)
         }
     }
@@ -199,6 +202,20 @@ final class ColumnViewController: NSViewController, DirectoryView,
         table.registerForDraggedTypes(DropBehavior.registeredTypes)
         table.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
         table.setDraggingSourceOperationMask([.copy, .move], forLocal: true)
+        table.onOpenSelection = { [weak self, weak table] in
+            guard let self, let table, let column = self.column(for: table) else { return }
+            let rows = table.selectedRowIndexes
+            let items = rows.compactMap { column.items.indices.contains($0)
+                ? column.items[$0] : nil }
+            // Descend into a lone selected folder (opening it via onOpen would
+            // re-root the tab and collapse the column chain — same reason the
+            // double-click handler only opens files); otherwise open files.
+            if items.count == 1, items[0].isDirectory {
+                self.focusColumn(after: table)
+            } else {
+                for item in items where !item.isDirectory { self.onOpen?(item.url) }
+            }
+        }
         table.onNavigateLeft = { [weak self, weak table] in
             guard let self, let table else { return }
             self.focusColumn(before: table)

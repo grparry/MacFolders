@@ -8,6 +8,16 @@ final class ListNode {
 }
 
 final class ContextOutlineListView: NSOutlineView {
+    var onOpenSelection: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36 || event.keyCode == 76 {   // Return / keypad Enter
+            onOpenSelection?()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
     override func menu(for event: NSEvent) -> NSMenu? {
         let clicked = row(at: convert(event.locationInWindow, from: nil))
         if clicked >= 0, !selectedRowIndexes.contains(clicked) {
@@ -224,6 +234,10 @@ final class FileListViewController: NSViewController, DirectoryView,
         outlineView.indentationPerLevel = 14
         outlineView.target = self
         outlineView.doubleAction = #selector(doubleClicked)
+        outlineView.onOpenSelection = { [weak self] in
+            guard let self else { return }
+            for url in self.selectedURLs { self.onOpen?(url) }
+        }
         outlineView.menu = contextMenu
         outlineView.registerForDraggedTypes(DropBehavior.registeredTypes)
         outlineView.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
