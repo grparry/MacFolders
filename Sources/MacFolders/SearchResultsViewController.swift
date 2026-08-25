@@ -22,7 +22,7 @@ final class SearchResultsViewController: NSViewController,
         labels: ["Folder", "This Mac"], trackingMode: .selectOne,
         target: nil, action: nil)
     private let statusLabel = NSTextField(labelWithString: "")
-    private let tableView = NSTableView()
+    private let tableView = ReturnOpenTableView()
     private let scrollView = NSScrollView()
 
     private static let dateFormatter: DateFormatter = {
@@ -69,6 +69,10 @@ final class SearchResultsViewController: NSViewController,
         tableView.rowHeight = 20
         tableView.target = self
         tableView.doubleAction = #selector(doubleClicked)
+        tableView.onOpenSelection = { [weak self] in
+            guard let self else { return }
+            for url in self.actionTargets() { self.onOpen?(url) }
+        }
         let menu = NSMenu()
         menu.delegate = self
         tableView.menu = menu

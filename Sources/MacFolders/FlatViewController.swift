@@ -27,7 +27,7 @@ final class FlatViewController: NSViewController, DirectoryView,
     private var watcher: DirectoryWatcher?
     private var pendingRescan: DispatchWorkItem?
 
-    private let tableView = NSTableView()
+    private let tableView = ReturnOpenTableView()
     private let scrollView = NSScrollView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let dotTreesChip = NSButton(checkboxWithTitle: "Skip listed folders",
@@ -125,6 +125,10 @@ final class FlatViewController: NSViewController, DirectoryView,
         tableView.rowHeight = 20
         tableView.target = self
         tableView.doubleAction = #selector(doubleClicked)
+        tableView.onOpenSelection = { [weak self] in
+            guard let self else { return }
+            for url in self.selectedURLs { self.onOpen?(url) }
+        }
         tableView.menu = contextMenu
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: false)
         tableView.setDraggingSourceOperationMask([.copy, .move], forLocal: true)

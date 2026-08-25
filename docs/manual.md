@@ -203,4 +203,5 @@ multi-instance runs merge through a lock-protected read-merge-write.
   absolute, `~`-relative, or a `file://` URL — and navigates the current
   tab there. Right-click the new-tab **+** to open a typed path in a new
   tab instead.
+- **Enter / Return** opens the current selection (every selected item) — files launch, folders open; in column view a selected folder descends into it. Works in icon, list, column, flat, and search results.
 - **Navigation** — back/forward history, Cmd+↑, Go menu, a toolbar path
