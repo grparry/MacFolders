@@ -15,7 +15,12 @@ final class WorkspacesMenuController: NSObject, NSMenuDelegate {
         do { try manager.refreshFromDisk() } catch { NSAlert(error: error).runModal() }
         menu.removeAllItems()
         let currentID = AppDelegate.shared.currentWorkspaceID
-        for (index, workspace) in manager.state.workspaces.enumerated() {
+        // Sorted by name (natural/numeric-aware), matching the Dock menu; the
+        // Ctrl+Cmd+1…9 shortcuts follow the visible order.
+        let workspaces = manager.state.workspaces.sorted {
+            $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
+        for (index, workspace) in workspaces.enumerated() {
             let item = NSMenuItem(title: workspace.name,
                                   action: #selector(openWorkspace(_:)),
                                   keyEquivalent: index < 9 ? "\(index + 1)" : "")
