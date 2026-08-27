@@ -306,7 +306,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Pick up other instances' workspaces; errors here just mean the list
         // may be a moment stale — no alert from a dock right-click.
         try? workspaceManager.refreshFromDisk()
-        for workspace in workspaceManager.state.workspaces {
+        let sortedWorkspaces = workspaceManager.state.workspaces.sorted {
+            $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
+        for workspace in sortedWorkspaces {
             let item = NSMenuItem(title: workspace.name,
                                   action: #selector(dockOpenWorkspace(_:)),
                                   keyEquivalent: "")
