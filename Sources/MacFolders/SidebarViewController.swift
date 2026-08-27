@@ -150,11 +150,20 @@ final class SidebarViewController: NSViewController,
             entries += [.group("iCloud"), .location(icloud)]
         }
         entries += [.group("Favorites")] + favorites.map(Entry.location)
+        // Display sorted by name (natural/numeric-aware), like the workspace
+        // menus; the stored arrays stay recency-ordered so newest-first
+        // insertion and the cap keep working.
+        func byName(_ a: URL, _ b: URL) -> Bool {
+            a.lastPathComponent.localizedStandardCompare(b.lastPathComponent)
+                == .orderedAscending
+        }
         if !recentFolders.isEmpty {
-            entries += [.group("Recent Folders")] + recentFolders.map(Entry.location)
+            entries += [.group("Recent Folders")]
+                + recentFolders.sorted(by: byName).map(Entry.location)
         }
         if !recentDocuments.isEmpty {
-            entries += [.group("Recent Documents")] + recentDocuments.map(Entry.location)
+            entries += [.group("Recent Documents")]
+                + recentDocuments.sorted(by: byName).map(Entry.location)
         }
         outlineView.reloadData()
     }
