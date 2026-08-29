@@ -61,6 +61,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowBecameKey(_:)),
             name: NSWindow.didBecomeKeyNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            forName: ContentViewController.fullPathChanged, object: nil,
+            queue: .main) { [weak self] _ in
+            self?.controllers.forEach { $0.refreshTitle() }
+        }
         installTabBarMenuMonitor()
 
         // Restore every workspace that was open, keying the last-active one.
@@ -398,9 +403,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             name: ContentViewController.hiddenFilesChanged, object: nil)
     }
 
+    /// View > Show Full Path (explicit target, like Show Hidden Files).
+    @objc func toggleFullPath(_ sender: Any?) {
+        UserDefaults.standard.set(!ContentViewController.showFullPath,
+                                  forKey: "showFullPath")
+        NotificationCenter.default.post(
+            name: ContentViewController.fullPathChanged, object: nil)
+    }
+
     @objc func validateMenuItem(_ item: NSMenuItem) -> Bool {
         if item.action == #selector(toggleHiddenFiles(_:)) {
             item.state = ContentViewController.showHiddenFiles ? .on : .off
+        }
+        if item.action == #selector(toggleFullPath(_:)) {
+            item.state = ContentViewController.showFullPath ? .on : .off
         }
         if item.action == #selector(emptyTrashFromMenu(_:)) {
             // Enabled only when the key window's current tab is the Trash.

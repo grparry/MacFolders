@@ -109,6 +109,12 @@ enum MainMenu {
             keyEquivalent: ".")
         hidden.keyEquivalentModifierMask = [.command, .shift]
         hidden.target = AppDelegate.shared
+        let fullPath = viewMenu.addItem(
+            withTitle: "Show Full Path",
+            action: #selector(AppDelegate.toggleFullPath(_:)),
+            keyEquivalent: "p")
+        fullPath.keyEquivalentModifierMask = [.command, .control]
+        fullPath.target = AppDelegate.shared
         viewItem.submenu = viewMenu
 
         // Go

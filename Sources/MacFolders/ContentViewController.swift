@@ -624,6 +624,11 @@ final class ContentViewController: NSViewController {
         UserDefaults.standard.bool(forKey: "showHiddenFiles")
     }
 
+    static let fullPathChanged = Notification.Name("FullPathChanged")
+    static var showFullPath: Bool {
+        UserDefaults.standard.bool(forKey: "showFullPath")
+    }
+
     @objc private func hiddenFilesSettingChanged(_ note: Notification) {
         applyHiddenFilesSetting()
     }
