@@ -175,11 +175,17 @@ final class BrowserWindowController: NSWindowController, NSWindowDelegate {
     private func updateTitle() {
         // displayName localizes system folders ("iCloud Drive" instead of
         // "com~apple~CloudDocs") and falls back to the last path component.
-        let display = FileManager.default.displayName(atPath: currentURL.path)
-        let folder = display.isEmpty
-            ? (currentURL.lastPathComponent.isEmpty
-                ? currentURL.path : currentURL.lastPathComponent)
-            : display
+        let folder: String
+        if ContentViewController.showFullPath {
+            // Show Full Path: the folder segment becomes the full POSIX path.
+            folder = currentURL.path
+        } else {
+            let display = FileManager.default.displayName(atPath: currentURL.path)
+            folder = display.isEmpty
+                ? (currentURL.lastPathComponent.isEmpty
+                    ? currentURL.path : currentURL.lastPathComponent)
+                : display
+        }
         // Title bar: "workspace — folder" so the Dock's window list
         // disambiguates. Tab label: just the folder — the workspace prefix is
         // redundant inside one group's tab bar.

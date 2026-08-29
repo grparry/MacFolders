@@ -145,6 +145,7 @@ you clear the field or navigate.
   per line; empty selection = current folder), sidebar, tabs, and Edit menu
   (Cmd+Option+C).
 - Show Hidden Files (Cmd+Shift+.) is global and persistent.
+- **Show Full Path** (View menu, Ctrl+Cmd+P) is a global, persistent toggle that puts the full POSIX path of the displayed folder in the window title.
 - Symlinks to folders navigate in-app. Vanished folders recover to the
   nearest surviving ancestor.
 
@@ -195,6 +196,7 @@ multi-instance runs merge through a lock-protected read-merge-write.
 | Cmd+Shift+N | New folder |
 | Cmd+Delete | Move to Trash |
 | Cmd+Shift+. | Show/hide hidden files |
+| Ctrl+Cmd+P | Show/hide full path in title |
 | Cmd+[ / ] | Back / Forward |
 | Cmd+↑ | Enclosing folder |
 | Cmd+Shift+H/D/O/L/A | Home / Desktop / Documents / Downloads / Applications |
