@@ -7,6 +7,17 @@ final class ListNode {
     init(item: FileItem) { self.item = item }
 }
 
+/// Sentinel for the always-present trailing blank row. It exists so a drop
+/// always has a target that resolves to the displayed (root) folder, even
+/// when expanded content fills the view — e.g. dragging a nested item back
+/// out to the folder being shown. Not a ListNode, so the existing casts make
+/// it non-selectable, non-expandable, blank, and non-draggable for free, and
+/// a drop on it falls through to the root branch.
+final class ListBlankRow {
+    static let shared = ListBlankRow()
+    private init() {}
+}
+
 final class ContextOutlineListView: NSOutlineView {
     var onOpenSelection: (() -> Void)?
 
@@ -315,17 +326,26 @@ final class FileListViewController: NSViewController, DirectoryView,
     // MARK: Data source
 
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
-        guard let node = item as? ListNode else { return rootNodes.count }
+        // +1 at the root for the trailing blank drop row (see ListBlankRow).
+        guard let node = item as? ListNode else { return rootNodes.count + 1 }
         return children(of: node).count
     }
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
-        guard let node = item as? ListNode else { return rootNodes[index] }
+        guard let node = item as? ListNode else {
+            return index < rootNodes.count ? rootNodes[index] : ListBlankRow.shared
+        }
         return children(of: node)[index]
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
         (item as? ListNode)?.item.isDirectory ?? false
+    }
+
+    /// The blank drop row is never selectable (keyboard nav skips it, clicks
+    /// don't land on it); only real rows are.
+    func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
+        item is ListNode
     }
 
     // MARK: Cells
