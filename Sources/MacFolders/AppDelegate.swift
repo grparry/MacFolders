@@ -306,6 +306,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Dock menu (workspace launcher; macOS adds the window switcher)
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        workspaceDockMenu()
+    }
+
+    /// A plain dock-icon click with no workspaces open offers the same
+    /// workspace chooser as a right-click, instead of doing nothing. (With
+    /// windows open — visible or just minimized — AppKit reactivates normally.)
+    func applicationShouldHandleReopen(_ sender: NSApplication,
+                                       hasVisibleWindows: Bool) -> Bool {
+        guard !hasVisibleWindows, controllers.isEmpty else { return true }
+        NSApp.activate(ignoringOtherApps: true)
+        workspaceDockMenu().popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        return false
+    }
+
+    private func workspaceDockMenu() -> NSMenu {
         let menu = NSMenu()
         guard workspaceManager != nil else { return menu }
         // Pick up other instances' workspaces; errors here just mean the list
