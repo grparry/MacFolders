@@ -205,5 +205,6 @@ multi-instance runs merge through a lock-protected read-merge-write.
   absolute, `~`-relative, or a `file://` URL — and navigates the current
   tab there. Right-click the new-tab **+** to open a typed path in a new
   tab instead.
+- List view keeps a **trailing blank row** that is always a drop target for the displayed (root) folder — so you can drag a nested item back out to the folder you're viewing even when expanded content fills the view.
 - **Enter / Return** opens the current selection (every selected item) — files launch, folders open; in column view a selected folder descends into it. Works in icon, list, column, flat, and search results.
 - **Navigation** — back/forward history, Cmd+↑, Go menu, a toolbar path

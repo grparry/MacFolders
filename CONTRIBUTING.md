@@ -49,6 +49,7 @@ The Xcode project is generated — edit `project.yml`, never the `.xcodeproj`.
 - Modern iCloud Drive exposes undownloaded files as real-named dataless
   items, not ".name.icloud" placeholders; `isUbiquitousItem` alone reads
   everything as downloaded — use `ubiquitousItemDownloadingStatus`.
+- The list view's data source adds a trailing `ListBlankRow` sentinel (root child count + 1). It's deliberately NOT a `ListNode`, so the existing `item as? ListNode` casts make it non-selectable, non-expandable, blank (`viewFor` returns nil), and non-draggable, and a drop on it falls through to the root branch. Keep new outline delegate/data-source methods guarding on `as? ListNode` or they'll crash on the sentinel.
 - Cross-app drag pasteboard CONTENT is unreadable during hover — reading
   URLs in `validateDrop` returns empty for external drags and the drop
   gets refused. Hover may only `canReadObject`; read content at accept.
