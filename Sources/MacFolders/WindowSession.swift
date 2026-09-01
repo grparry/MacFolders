@@ -107,6 +107,10 @@ final class WindowSession {
                     anchor.window?.addTabbedWindow(controller.window!, ordered: .above)
                     controller.window?.orderFront(nil)
                 } else {
+                    // Cascade (on by default) would move the window off its
+                    // restored origin during showWindow — the workspace's saved
+                    // size and location is authoritative, so disable it.
+                    controller.shouldCascadeWindows = false
                     controller.window?.setFrame(windowState.frame, display: false)
                     // Anchor windows are standalone; don't auto-tab them into
                     // whatever group happens to be key.
