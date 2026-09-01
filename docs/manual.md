@@ -120,7 +120,7 @@ you clear the field or navigate.
 
 - Full drag & drop with Finder semantics (move on same volume, Option to
   copy), including drops onto sidebar folders and in every view.
-- Copy/Paste (Cmd+C/V) — and **Cut/Paste (Cmd+X/V) that actually moves**. Pasting (or dropping) an item whose name already exists keeps both, appending a Finder-style “ copy”, “ copy 2”… suffix instead of failing.
+- Copy/Paste (Cmd+C/V) — and **Cut/Paste (Cmd+X/V) that actually moves**. Cmd+V always pastes into the folder you're viewing; the context menu offers **Paste Into “<current folder>”** always, plus **Paste Into “<selected folder>”** when a single folder is selected — the destination is always named, never guessed. Pasting (or dropping) an item whose name already exists keeps both, appending a Finder-style “ copy”, “ copy 2”… suffix instead of failing.
   Paste targets the selected folder when exactly one is selected (including
   the folder you right-clicked); otherwise the folder being viewed.
 - Rename in place, Duplicate, Move to Trash (Cmd+Delete), and
