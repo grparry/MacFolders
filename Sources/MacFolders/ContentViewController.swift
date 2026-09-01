@@ -532,20 +532,34 @@ final class ContentViewController: NSViewController {
 
     /// Paste lands in the single selected/right-clicked folder when there
     /// is one; otherwise in the folder being viewed.
-    private var pasteDestination: URL {
-        if actionTargets.count == 1, let target = actionTargets.first,
-           (try? target.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
-            return target
-        }
-        return actionDirectory
+    /// The single selected folder, if exactly one folder is selected — the
+    /// destination for "Paste Into '<folder>'". Files aren't paste targets.
+    private var selectedFolderTarget: URL? {
+        guard actionTargets.count == 1, let target = actionTargets.first,
+              (try? target.resourceValues(forKeys: [.isDirectoryKey]))?
+                .isDirectory == true else { return nil }
+        return target
     }
 
+    /// Cmd+V / Edit-menu paste and the "Paste Into '<current folder>'" item:
+    /// always the folder being viewed, never a selected subfolder — so paste
+    /// into the root is always reachable regardless of what's selected.
     @objc func paste(_ sender: Any?) {
+        performPaste(into: actionDirectory)
+    }
+
+    /// Context-menu "Paste Into '<selected folder>'" — into the one selected
+    /// folder when there is exactly one.
+    @objc func pasteIntoSelected(_ sender: Any?) {
+        guard let destination = selectedFolderTarget else { return }
+        performPaste(into: destination)
+    }
+
+    private func performPaste(into destination: URL) {
         let pasteboard = NSPasteboard.general
         guard let urls = pasteboard.readObjects(
             forClasses: [NSURL.self]) as? [URL], !urls.isEmpty else { return }
         do {
-            let destination = pasteDestination
             if let cut = Self.pendingCut, cut.changeCount == pasteboard.changeCount {
                 // Items already here are a no-op, like Finder.
                 let moving = cut.urls.filter {
@@ -591,7 +605,7 @@ final class ContentViewController: NSViewController {
     /// Context menu: a right-clicked folder is the destination; otherwise
     /// the active directory (the clicked column in column view).
     @objc func newFolder(_ sender: Any?) {
-        createFolder(in: pasteDestination)
+        createFolder(in: selectedFolderTarget ?? actionDirectory)
     }
 
     /// File menu: always the root of the current view.
@@ -738,8 +752,17 @@ extension ContentViewController: NSMenuDelegate {
             menu.addItem(withTitle: "Copy Pathname",
                          action: #selector(copyPathname(_:)), keyEquivalent: "").target = self
         }
-        menu.addItem(withTitle: "Paste",
+        // Named paste destinations: always the current folder, plus the one
+        // selected folder when there is one. No ambiguity about where it lands.
+        let currentName = FileManager.default.displayName(atPath: actionDirectory.path)
+        menu.addItem(withTitle: "Paste Into “\(currentName)”",
                      action: #selector(paste(_:)), keyEquivalent: "").target = self
+        if let selected = selectedFolderTarget {
+            let selectedName = FileManager.default.displayName(atPath: selected.path)
+            menu.addItem(withTitle: "Paste Into “\(selectedName)”",
+                         action: #selector(pasteIntoSelected(_:)),
+                         keyEquivalent: "").target = self
+        }
         menu.addItem(withTitle: "New Folder",
                      action: #selector(newFolder(_:)), keyEquivalent: "").target = self
         if selection.isEmpty {
