@@ -329,6 +329,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let sortedWorkspaces = workspaceManager.state.workspaces.sorted {
             $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }
+        let openIDs = Set(session.openWorkspaceIDs())
         for workspace in sortedWorkspaces {
             let item = NSMenuItem(title: workspace.name,
                                   action: #selector(dockOpenWorkspace(_:)),
@@ -336,6 +337,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.target = self
             item.representedObject = workspace.id
             menu.addItem(item)
+            // Option reveals a "Close" alternate for workspaces that are open
+            // (same row: click opens, Option-click closes).
+            if openIDs.contains(workspace.id) {
+                let close = NSMenuItem(title: "Close “\(workspace.name)”",
+                                       action: #selector(dockCloseWorkspace(_:)),
+                                       keyEquivalent: "")
+                close.target = self
+                close.representedObject = workspace.id
+                close.isAlternate = true
+                close.keyEquivalentModifierMask = [.option]
+                menu.addItem(close)
+            }
         }
         menu.addItem(.separator())
         let newWindowItem = NSMenuItem(title: "New Window",
@@ -343,6 +356,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         newWindowItem.target = self
         menu.addItem(newWindowItem)
         return menu
+    }
+
+    @objc private func dockCloseWorkspace(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        closeWorkspaceWindows(id)
     }
 
     @objc private func dockOpenWorkspace(_ sender: NSMenuItem) {
