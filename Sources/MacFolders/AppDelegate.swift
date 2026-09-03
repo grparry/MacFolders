@@ -315,10 +315,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication,
                                        hasVisibleWindows: Bool) -> Bool {
         guard !hasVisibleWindows, controllers.isEmpty else { return true }
+        // Toggle: clicking the icon dismisses the modal chooser, which then
+        // re-fires reopen — that second reopen is the same click, so leave it
+        // hidden instead of re-showing. Only within this chooser scenario.
+        if let shown = chooserDismissedAt, Date().timeIntervalSince(shown) < 0.5 {
+            chooserDismissedAt = nil
+            return false
+        }
         NSApp.activate(ignoringOtherApps: true)
         workspaceDockMenu().popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+        chooserDismissedAt = Date()   // popUp is modal; set on dismissal
         return false
     }
+    private var chooserDismissedAt: Date?
 
     private func workspaceDockMenu() -> NSMenu {
         let menu = NSMenu()
