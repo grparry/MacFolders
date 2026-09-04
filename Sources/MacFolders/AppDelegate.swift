@@ -306,7 +306,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Dock menu (workspace launcher; macOS adds the window switcher)
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
-        workspaceDockMenu()
+        // A right-click that dismissed the just-shown chooser should close it,
+        // not re-present our workspace list. Scoped to the same no-workspaces
+        // chooser scenario as the reopen toggle.
+        if controllers.isEmpty, let shown = chooserDismissedAt,
+           Date().timeIntervalSince(shown) < 0.5 {
+            chooserDismissedAt = nil
+            return nil
+        }
+        return workspaceDockMenu()
     }
 
     /// A plain dock-icon click with no workspaces open offers the same
