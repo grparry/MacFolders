@@ -306,15 +306,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Dock menu (workspace launcher; macOS adds the window switcher)
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
-        // A right-click that dismissed the just-shown chooser should close it,
-        // not re-present our workspace list. Scoped to the same no-workspaces
-        // chooser scenario as the reopen toggle.
-        if controllers.isEmpty, let shown = chooserDismissedAt,
-           Date().timeIntervalSince(shown) < 0.5 {
-            chooserDismissedAt = nil
+        guard controllers.isEmpty else { return workspaceDockMenu() }
+        // No workspaces open: make the right-click menu toggle. The OS owns
+        // this menu (unlike the left-click chooser we pop up ourselves), so we
+        // approximate: right-clicking the icon while the menu is open makes the
+        // OS close it (menuDidClose) and immediately re-request it — suppress
+        // that near-instant re-request so it stays closed.
+        if let closed = dockMenuClosedAt, Date().timeIntervalSince(closed) < 0.25 {
+            dockMenuClosedAt = nil
             return nil
         }
-        return workspaceDockMenu()
+        let menu = workspaceDockMenu()
+        menu.delegate = self
+        dockMenuInstance = menu
+        return menu
+    }
+    private var dockMenuClosedAt: Date?
+    private weak var dockMenuInstance: NSMenu?
+
+    func menuDidClose(_ menu: NSMenu) {
+        if menu === dockMenuInstance { dockMenuClosedAt = Date() }
     }
 
     /// A plain dock-icon click with no workspaces open offers the same
