@@ -128,6 +128,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         copyItem.representedObject = controller.currentURL
         menu.addItem(copyItem)
         menu.addItem(.separator())
+        let duplicateItem = NSMenuItem(title: "Duplicate Tab",
+                                       action: #selector(duplicateTab(_:)), keyEquivalent: "")
+        duplicateItem.target = self
+        duplicateItem.representedObject = controller
+        menu.addItem(duplicateItem)
         let closeItem = NSMenuItem(title: "Close Tab",
                                    action: #selector(NSWindow.performClose(_:)),
                                    keyEquivalent: "")
@@ -143,6 +148,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.popUp(positioning: nil,
                    at: window.convertPoint(toScreen: event.locationInWindow),
                    in: nil)
+    }
+
+    @objc private func duplicateTab(_ sender: NSMenuItem) {
+        guard let controller = sender.representedObject as? BrowserWindowController
+        else { return }
+        // A new tab in the same group showing the same folder.
+        controller.openNewTab(at: controller.currentURL)
     }
 
     @objc private func copyTabPathname(_ sender: NSMenuItem) {
