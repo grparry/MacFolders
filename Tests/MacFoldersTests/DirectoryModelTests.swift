@@ -100,6 +100,46 @@ final class DirectoryModelTests: XCTestCase {
         wait(for: [changed], timeout: 5.0)
         model.stopWatching()
     }
+
+    func testLocalChangeFilter() throws {
+        let sub = tempDir.appendingPathComponent("sub")
+        try fm.createDirectory(at: sub, withIntermediateDirectories: false)
+        let watcher = DirectoryWatcher(directoryURL: sub)
+        // Direct child created/removed.
+        XCTAssertTrue(watcher.isAffected(byLocalChangeTo: [sub.appendingPathComponent("a")]))
+        // The watched folder itself, or an ancestor, moved/removed.
+        XCTAssertTrue(watcher.isAffected(byLocalChangeTo: [sub]))
+        XCTAssertTrue(watcher.isAffected(byLocalChangeTo: [tempDir]))
+        // Siblings and deeper items don't change this listing.
+        XCTAssertFalse(watcher.isAffected(
+            byLocalChangeTo: [tempDir.appendingPathComponent("sibling.txt")]))
+        XCTAssertFalse(watcher.isAffected(
+            byLocalChangeTo: [sub.appendingPathComponent("deep/x.txt")]))
+        // A name-prefix sibling ("sub2") is not a descendant of "sub".
+        XCTAssertFalse(watcher.isAffected(
+            byLocalChangeTo: [tempDir.appendingPathComponent("sub2/x.txt")]))
+        // Recursive (flat view) watchers take anything below.
+        let recursive = DirectoryWatcher(directoryURL: tempDir, recursive: true)
+        XCTAssertTrue(recursive.isAffected(
+            byLocalChangeTo: [sub.appendingPathComponent("deep/x.txt")]))
+    }
+
+    /// The in-app path must refresh with no FSEvents involvement: a file
+    /// operation announces its items and a started watcher fires.
+    func testFileOperationNotifiesWatcherDirectly() throws {
+        let dest = tempDir.appendingPathComponent("dest")
+        try fm.createDirectory(at: dest, withIntermediateDirectories: false)
+        try makeFile("a.txt")
+        let watcher = DirectoryWatcher(directoryURL: dest)
+        var fired = 0
+        watcher.onChange = { fired += 1 }
+        try watcher.start()
+        defer { watcher.stop() }
+        try FileOperations.move([tempDir.appendingPathComponent("a.txt")], to: dest)
+        // Synchronous on the main thread — no run-loop wait, so this can't
+        // be satisfied by a late FSEvents delivery.
+        XCTAssertEqual(fired, 1)
+    }
 }
 
 extension DirectoryModelTests {

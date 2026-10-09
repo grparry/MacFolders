@@ -71,10 +71,13 @@ enum CloudFiles {
 
     static func startDownload(itemAt url: URL) throws {
         try FileManager.default.startDownloadingUbiquitousItem(at: url)
+        // Status flips to downloading now; completion arrives via FSEvents.
+        DirectoryWatcher.noteLocalChange([url])
     }
 
     static func evict(itemAt url: URL) throws {
         try FileManager.default.evictUbiquitousItem(at: url)
+        DirectoryWatcher.noteLocalChange([url])
     }
 
     /// iCloud item not resident on disk (legacy placeholder or modern

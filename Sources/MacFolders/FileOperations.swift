@@ -4,6 +4,8 @@ enum FileOperations {
     @discardableResult
     static func copy(_ sources: [URL], to directory: URL) throws -> [URL] {
         var results: [URL] = []
+        // Announce even on a mid-batch failure: earlier items did land.
+        defer { DirectoryWatcher.noteLocalChange(results) }
         for source in sources {
             // Name collision → Finder-style " copy" suffix instead of failing.
             let dest = nonCollidingURL(named: source.lastPathComponent, in: directory)
@@ -16,6 +18,8 @@ enum FileOperations {
     @discardableResult
     static func move(_ sources: [URL], to directory: URL) throws -> [URL] {
         var results: [URL] = []
+        var touched: [URL] = []
+        defer { DirectoryWatcher.noteLocalChange(touched) }
         for source in sources {
             // Moving into the folder it's already in is a no-op, not a rename.
             if source.deletingLastPathComponent().standardizedFileURL
@@ -27,6 +31,7 @@ enum FileOperations {
             let dest = nonCollidingURL(named: source.lastPathComponent, in: directory)
             try FileManager.default.moveItem(at: source, to: dest)
             results.append(dest)
+            touched += [source, dest]
         }
         return results
     }
@@ -55,6 +60,7 @@ enum FileOperations {
     static func rename(_ url: URL, to newName: String) throws -> URL {
         let dest = url.deletingLastPathComponent().appendingPathComponent(newName)
         try FileManager.default.moveItem(at: url, to: dest)
+        DirectoryWatcher.noteLocalChange([url, dest])
         return dest
     }
 
@@ -65,6 +71,7 @@ enum FileOperations {
         let dest = nonCollidingURL(named: url.lastPathComponent,
                                    in: url.deletingLastPathComponent())
         try FileManager.default.copyItem(at: url, to: dest)
+        DirectoryWatcher.noteLocalChange([dest])
         return dest
     }
 
@@ -111,6 +118,7 @@ enum FileOperations {
             try? FileManager.default.removeItem(at: dest)
             throw error("Could not compress: \(message)")
         }
+        DirectoryWatcher.noteLocalChange([dest])
         return dest
     }
 
@@ -133,20 +141,29 @@ enum FileOperations {
     static func createFolder(named name: String, in directory: URL) throws -> URL {
         let dest = directory.appendingPathComponent(name)
         try FileManager.default.createDirectory(at: dest, withIntermediateDirectories: false)
+        DirectoryWatcher.noteLocalChange([dest])
         return dest
     }
 
     static func trash(_ urls: [URL]) throws {
+        var touched: [URL] = []
+        defer { DirectoryWatcher.noteLocalChange(touched) }
         for url in urls {
-            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            var trashed: NSURL?
+            try FileManager.default.trashItem(at: url, resultingItemURL: &trashed)
+            touched.append(url)
+            if let trashed { touched.append(trashed as URL) }
         }
     }
 
     /// Permanent removal, bypassing the Trash. Callers confirm first —
     /// there is no undo.
     static func deleteImmediately(_ urls: [URL]) throws {
+        var touched: [URL] = []
+        defer { DirectoryWatcher.noteLocalChange(touched) }
         for url in urls {
             try FileManager.default.removeItem(at: url)
+            touched.append(url)
         }
     }
 }

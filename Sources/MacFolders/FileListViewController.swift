@@ -526,8 +526,6 @@ final class FileListViewController: NSViewController, DirectoryView,
         }
         do {
             try FileOperations.rename(item.url, to: newName)
-            // The FSEvents watcher refreshes root-level renames; renames inside
-            // an expanded folder refresh on next expand.
         } catch {
             NSAlert(error: error).runModal()
             field.stringValue = item.name
