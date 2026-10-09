@@ -144,6 +144,7 @@ enum Trash {
         // System-managed item) must not abort the rest. Failures are still
         // surfaced — collected and reported, never swallowed.
         var failures: [(name: String, reason: String)] = []
+        defer { DirectoryWatcher.noteLocalChange(items) }
         for item in items {
             do {
                 try FileManager.default.removeItem(at: item)

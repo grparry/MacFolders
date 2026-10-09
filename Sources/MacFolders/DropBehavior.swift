@@ -108,11 +108,17 @@ enum DropBehavior {
             guard info.draggingPasteboard.types?.contains(legacyPromiseType) == true
             else { return false }
             let names = info.namesOfPromisedFilesDropped(atDestination: destination) ?? []
+            // The legacy API gives no completion signal — the source may
+            // still be writing — so this refresh shows whatever has landed;
+            // the rest arrives via FSEvents.
+            DirectoryWatcher.noteLocalChange(
+                names.map { destination.appendingPathComponent($0) })
             return !names.isEmpty
         }
         for receiver in receivers {
             receiver.receivePromisedFiles(atDestination: destination, options: [:],
-                                          operationQueue: promiseQueue) { _, error in
+                                          operationQueue: promiseQueue) { url, error in
+                DirectoryWatcher.noteLocalChange([url])
                 if let error {
                     DispatchQueue.main.async {
                         NSAlert(error: error).runModal()

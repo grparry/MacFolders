@@ -121,11 +121,20 @@ final class SidebarViewController: NSViewController,
         NotificationCenter.default.addObserver(
             self, selector: #selector(volumesChanged),
             name: NetworkBrowser.serversChanged, object: nil)
+        // In-app moves/deletes change what the sidebar shows (the Trash's
+        // empty/full icon, favorites or recents that moved away).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(localFilesChanged),
+            name: DirectoryWatcher.localChange, object: nil)
         reloadVolumes()
     }
 
     @objc private func volumesChanged(_ note: Notification) {
         reloadVolumes()
+    }
+
+    @objc private func localFilesChanged(_ note: Notification) {
+        rebuildEntries()
     }
 
     private func reloadVolumes() {
