@@ -269,6 +269,24 @@ final class WorkspaceManagerTests: XCTestCase {
         XCTAssertFalse(manager.activeWorkspace.recentFolders.contains(scratch.path))
     }
 
+    func testPruneDeadPathsRemovesImmediatelyAndOnlyWritesWhenDead() throws {
+        let scratch = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LivePrune-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        let manager = try WorkspaceManager(store: store)
+        try manager.addFavorite(path: scratch.path)
+        var changes = 0
+        manager.onStateChanged = { changes += 1 }
+
+        try manager.pruneDeadPaths()   // nothing dead: no write, no event
+        XCTAssertEqual(changes, 0)
+
+        try FileManager.default.removeItem(at: scratch)
+        try manager.pruneDeadPaths()
+        XCTAssertEqual(changes, 1)
+        XCTAssertFalse(manager.activeWorkspace.favorites.contains(scratch.path))
+    }
+
     func testUnmountedVolumePathsSurvivePruning() {
         // Volume absent: keep (it may remount).
         XCTAssertFalse(WorkspaceManager.isPrunablyDead(

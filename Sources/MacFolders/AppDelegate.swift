@@ -57,7 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // "workspace — folder" updates live. (Dock menu is already live —
             // it rebuilds from current state each open.)
             self?.controllers.forEach { $0.refreshTitle() }
+            self?.syncSidebarPathWatchers()
         }
+        syncSidebarPathWatchers()
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowBecameKey(_:)),
             name: NSWindow.didBecomeKeyNotification, object: nil)
@@ -434,6 +436,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller.sidebarVC.favorites = workspace.favorites.map(URL.init(fileURLWithPath:))
         controller.sidebarVC.recentFolders = workspace.recentFolders.map(URL.init(fileURLWithPath:))
         controller.sidebarVC.recentDocuments = workspace.recentDocuments.map(URL.init(fileURLWithPath:))
+    }
+
+    // MARK: Live pruning of sidebar paths
+
+    /// One watcher per parent folder of every favorite/recent across all
+    /// workspaces. A change there (in-app operations fire directly; anything
+    /// else via FSEvents) prunes entries whose paths are gone, so removed
+    /// items leave the sidebar immediately instead of at next launch.
+    private var sidebarPathWatchers: [String: DirectoryWatcher] = [:]
+
+    private func syncSidebarPathWatchers() {
+        let paths = workspaceManager.state.workspaces.flatMap {
+            $0.favorites + $0.recentFolders + $0.recentDocuments
+        }
+        // "/" is excluded: a non-recursive FSEvents stream on the root still
+        // receives every event on the volume, and top-level folders
+        // (/Applications, /Users) aren't realistically removed.
+        let parents = Set(paths.map { ($0 as NSString).deletingLastPathComponent })
+            .subtracting(["/"])
+        for (parent, watcher) in sidebarPathWatchers where !parents.contains(parent) {
+            watcher.stop()
+            sidebarPathWatchers[parent] = nil
+        }
+        for parent in parents where sidebarPathWatchers[parent] == nil {
+            let watcher = DirectoryWatcher(directoryURL: URL(fileURLWithPath: parent))
+            watcher.onChange = { [weak self] in self?.pruneDeadSidebarPaths() }
+            do { try watcher.start() } catch {
+                NSAlert(error: error).runModal()
+                continue
+            }
+            sidebarPathWatchers[parent] = watcher
+        }
+    }
+
+    private func pruneDeadSidebarPaths() {
+        do { try workspaceManager.pruneDeadPaths() }
+        catch { NSAlert(error: error).runModal() }
     }
 
     func refreshSidebars() {

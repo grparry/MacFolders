@@ -264,6 +264,14 @@ final class WorkspaceManager {
         }
     }
 
+    /// Drop favorites/recents (and flat configs) whose paths no longer
+    /// exist. Writes — and fires onStateChanged — only when something is dead.
+    func pruneDeadPaths() throws {
+        var probe = state
+        guard Self.prune(&probe) else { return }
+        try mutate { _ in }  // mutate re-prunes the merged state and saves
+    }
+
     static func prune(_ state: inout AppState) -> Bool {
         var pruned = false
         for i in state.workspaces.indices {
